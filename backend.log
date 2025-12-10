@@ -1,0 +1,180 @@
+Starting up application...
+[+] Connected to MongoDB successfully!
+Running inquiry status migration...
+  short_term_loan_get_in_touch: Total=14, Pending=12, Confirmed=1, Completed=1, Cancelled=0
+  personal_loan_get_in_touch: Total=11, Pending=11, Confirmed=0, Completed=0, Cancelled=0
+  business_loan_get_in_touch: Total=24, Pending=24, Confirmed=0, Completed=0, Cancelled=0
+  home_loan_get_in_touch: Total=12, Pending=12, Confirmed=0, Completed=0, Cancelled=0
+  term_insurance_inquiries: Total=2, Pending=2, Confirmed=0, Completed=0, Cancelled=0
+  motor_insurance_inquiries: Total=21, Pending=20, Confirmed=1, Completed=0, Cancelled=0
+  health_insurance_inquiries: Total=24, Pending=23, Confirmed=1, Completed=0, Cancelled=0
+  sip_inquiries: Total=20, Pending=20, Confirmed=0, Completed=0, Cancelled=0
+
+[OK] Inquiry status migration complete
+[32mINFO[0m:     127.0.0.1:59697 - "[1mGET /api/admin/loan-management/applications?page=1&limit=6 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:63103 - "[1mGET /api/admin/loan-management/statistics HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:51702 - "[1mGET /api/admin/loan-management/applications?page=1&limit=10 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:61035 - "[1mOPTIONS /api/admin/dashboard/stats?t=1763474673150 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:64995 - "[1mOPTIONS /api/admin/dashboard/activities HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:53422 - "[1mOPTIONS /api/admin/dashboard/performance-metrics?t=1763474673151 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:58613 - "[1mOPTIONS /api/admin/dashboard/pending-approvals HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:61035 - "[1mGET /api/admin/dashboard/activities HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:64995 - "[1mGET /api/admin/dashboard/pending-approvals HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:49330 - "[1mOPTIONS /api/auth/profile HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:49330 - "[1mOPTIONS /api/admin/loan-management/applications?page=1&limit=6 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:49330 - "[1mOPTIONS /api/admin/loan-management/statistics HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:49330 - "[1mOPTIONS /api/admin/loan-management/applications?page=1&limit=6 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:61308 - "[1mGET /profiles/58e61e4e1ec94848a33b14ce8f0a3f88.png HTTP/1.1[0m" [31m404 Not Found[0m
+[32mINFO[0m:     127.0.0.1:49330 - "[1mGET /api/auth/profile HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:49330 - "[1mGET /api/admin/loan-management/applications?page=1&limit=6 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:60787 - "[1mGET /api/admin/dashboard/stats?t=1763474673150 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:56192 - "[1mGET /api/admin/loan-management/applications?page=1&limit=6 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:58595 - "[1mGET /api/admin/loan-management/statistics HTTP/1.1[0m" [32m200 OK[0m
+Error fetching admin performance metrics: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+[32mINFO[0m:     127.0.0.1:53422 - "[1mGET /api/admin/dashboard/performance-metrics?t=1763474673151 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:53510 - "[1mOPTIONS /api/admin/loan-management/applications?loan_type=Home+Loan&page=1&limit=6 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:53510 - "[1mGET /api/admin/loan-management/applications?loan_type=Home+Loan&page=1&limit=6 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:57845 - "[1mGET /api/admin/insurance-management/policies?skip=0&limit=6 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:55415 - "[1mGET /api/admin/insurance-management/statistics HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:55415 - "[1mOPTIONS /api/personal-tax/application/all HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:57845 - "[1mOPTIONS /api/business-tax/application/all HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:57845 - "[1mGET /api/business-tax/application/all HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:55415 - "[1mGET /api/personal-tax/application/all HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:65425 - "[1mOPTIONS /api/admin/reports/analytics?date_range=30days HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:59023 - "[1mOPTIONS /api/admin/reports/loan-distribution HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:57401 - "[1mOPTIONS /api/admin/reports/insurance-distribution HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:61921 - "[1mOPTIONS /api/admin/reports/investment-overview HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:62446 - "[1mOPTIONS /api/admin/reports/tax-planning-overview HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:59290 - "[1mOPTIONS /api/admin/reports/categories HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:65425 - "[1mOPTIONS /api/admin/reports/recent HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:57401 - "[1mGET /api/admin/reports/loan-distribution HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:61921 - "[1mGET /api/admin/reports/insurance-distribution HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:62446 - "[1mGET /api/admin/reports/investment-overview HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:59290 - "[1mGET /api/admin/reports/tax-planning-overview HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:65425 - "[1mGET /api/admin/reports/categories HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:59023 - "[1mGET /api/admin/reports/analytics?date_range=30days HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:57401 - "[1mGET /api/admin/reports/recent HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:58775 - "[1mOPTIONS /api/admin/reports/analytics?date_range=7days HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:53246 - "[1mGET /api/admin/reports/loan-distribution HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:63310 - "[1mGET /api/admin/reports/insurance-distribution HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:61332 - "[1mGET /api/admin/reports/investment-overview HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:62642 - "[1mGET /api/admin/reports/tax-planning-overview HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:61291 - "[1mGET /api/admin/reports/categories HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:58775 - "[1mGET /api/admin/reports/recent HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:53246 - "[1mGET /api/admin/reports/analytics?date_range=7days HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:64827 - "[1mOPTIONS /api/admin/dashboard/stats?t=1763474736679 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:56502 - "[1mOPTIONS /api/admin/dashboard/performance-metrics?t=1763474736679 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:64714 - "[1mGET /api/admin/dashboard/activities HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:55717 - "[1mGET /api/admin/dashboard/pending-approvals HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:64827 - "[1mGET /api/admin/dashboard/stats?t=1763474736679 HTTP/1.1[0m" [32m200 OK[0m
+Error fetching admin performance metrics: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+[32mINFO[0m:     127.0.0.1:56502 - "[1mGET /api/admin/dashboard/performance-metrics?t=1763474736679 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:64172 - "[1mGET /api/admin/loan-management/applications?page=1&limit=6 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:64172 - "[1mGET /api/admin/loan-management/applications?page=1&limit=6 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:63249 - "[1mGET /api/admin/loan-management/statistics HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:56502 - "[1mGET /api/admin/users/detailed?page=1&limit=10 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:53669 - "[1mOPTIONS /api/admin/loan-management/applications/691ba260f6f0f5671507b67f/status HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:53669 - "[1mPATCH /api/admin/loan-management/applications/691ba260f6f0f5671507b67f/status HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:53669 - "[1mGET /api/admin/loan-management/applications?page=1&limit=6 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:53669 - "[1mGET /api/admin/loan-management/statistics HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:57299 - "[1mGET /api/auth/profile HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:57299 - "[1mGET /api/auth/profile HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:62221 - "[1mGET /profiles/58e61e4e1ec94848a33b14ce8f0a3f88.png HTTP/1.1[0m" [31m404 Not Found[0m
+Profile image saved to: /uploads/profiles/6ca33cd74c314532949d56f1a1861610.png
+Updated admin profile image field: /uploads/profiles/6ca33cd74c314532949d56f1a1861610.png
+[32mINFO[0m:     127.0.0.1:50089 - "[1mPUT /api/auth/profile HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:50089 - "[1mGET /api/auth/profile HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:53223 - "[1mGET /profiles/6ca33cd74c314532949d56f1a1861610.png HTTP/1.1[0m" [32m200 OK[0m
+Updated admin profile image field: /uploads/profiles/6ca33cd74c314532949d56f1a1861610.png
+[32mINFO[0m:     127.0.0.1:57737 - "[1mPUT /api/auth/profile HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:57737 - "[1mGET /api/auth/profile HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:63804 - "[1mOPTIONS /api/admin/dashboard/stats?t=1763474896695 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:51921 - "[1mOPTIONS /api/admin/dashboard/performance-metrics?t=1763474896696 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:51385 - "[1mGET /profiles/6ca33cd74c314532949d56f1a1861610.png HTTP/1.1[0m" [33m304 Not Modified[0m
+[32mINFO[0m:     127.0.0.1:50758 - "[1mGET /api/admin/dashboard/activities HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:51921 - "[1mGET /api/admin/dashboard/pending-approvals HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:63804 - "[1mGET /api/admin/dashboard/stats?t=1763474896695 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:62843 - "[1mGET /api/auth/profile HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:62843 - "[1mGET /api/auth/profile HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:62843 - "[1mGET /api/auth/profile HTTP/1.1[0m" [32m200 OK[0m
+Error fetching admin performance metrics: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+[32mINFO[0m:     127.0.0.1:64252 - "[1mGET /api/admin/dashboard/performance-metrics?t=1763474896696 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:49990 - "[1mOPTIONS /api/admin/dashboard/stats?t=1763474905146 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:54626 - "[1mOPTIONS /api/admin/dashboard/performance-metrics?t=1763474905146 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:58100 - "[1mGET /api/admin/dashboard/activities HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:49990 - "[1mGET /api/admin/dashboard/pending-approvals HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:63092 - "[1mGET /api/admin/dashboard/stats?t=1763474905146 HTTP/1.1[0m" [32m200 OK[0m
+Error fetching admin performance metrics: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+[32mINFO[0m:     127.0.0.1:54626 - "[1mGET /api/admin/dashboard/performance-metrics?t=1763474905146 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:62552 - "[1mOPTIONS /api/admin/dashboard/performance-metrics?t=1763474935496 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:51759 - "[1mOPTIONS /api/admin/dashboard/stats?t=1763474935497 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:51759 - "[1mGET /api/admin/dashboard/stats?t=1763474935497 HTTP/1.1[0m" [32m200 OK[0m
+Error fetching admin performance metrics: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+[32mINFO[0m:     127.0.0.1:62552 - "[1mGET /api/admin/dashboard/performance-metrics?t=1763474935496 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:53991 - "[1mGET /api/financial-products?active_only=true HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:63782 - "[1mGET /api/financial-services?active_only=true HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:57109 - "[1mGET /api/home/testimonials HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:53991 - "[1mGET /api/home/blogs HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:49252 - "[1mOPTIONS /api/admin/dashboard/performance-metrics?t=1763474965491 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:61209 - "[1mOPTIONS /api/admin/dashboard/stats?t=1763474965492 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:61209 - "[1mGET /api/admin/dashboard/stats?t=1763474965492 HTTP/1.1[0m" [32m200 OK[0m
+Error fetching admin performance metrics: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+[32mINFO[0m:     127.0.0.1:49252 - "[1mGET /api/admin/dashboard/performance-metrics?t=1763474965491 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:55045 - "[1mOPTIONS /api/admin/dashboard/stats?t=1763474976504 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:50469 - "[1mOPTIONS /api/admin/dashboard/performance-metrics?t=1763474976504 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:55603 - "[1mGET /api/auth/profile HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:53792 - "[1mGET /api/admin/dashboard/activities HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:59297 - "[1mGET /api/admin/dashboard/pending-approvals HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:55045 - "[1mGET /api/admin/dashboard/stats?t=1763474976504 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:59577 - "[1mGET /profiles/6ca33cd74c314532949d56f1a1861610.png HTTP/1.1[0m" [33m304 Not Modified[0m
+Error fetching admin performance metrics: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+[32mINFO[0m:     127.0.0.1:50324 - "[1mGET /api/admin/dashboard/performance-metrics?t=1763474976504 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:55721 - "[1mOPTIONS /api/admin/dashboard/stats?t=1763474990535 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:54781 - "[1mOPTIONS /api/admin/dashboard/performance-metrics?t=1763474990535 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:55846 - "[1mGET /profiles/6ca33cd74c314532949d56f1a1861610.png HTTP/1.1[0m" [33m304 Not Modified[0m
+[32mINFO[0m:     127.0.0.1:52805 - "[1mGET /api/admin/dashboard/activities HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:60863 - "[1mGET /api/admin/dashboard/pending-approvals HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:57739 - "[1mGET /api/admin/dashboard/stats?t=1763474990535 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:55334 - "[1mOPTIONS /api/notifications/my-notifications?skip=0&limit=5&include_read=false HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:63766 - "[1mOPTIONS /api/notifications/unread-count HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:63372 - "[1mOPTIONS /api/dashboard/stats HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:63766 - "[1mGET /api/notifications/my-notifications?skip=0&limit=5&include_read=false HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:63372 - "[1mGET /api/notifications/unread-count HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:55334 - "[1mGET /api/auth/profile HTTP/1.1[0m" [32m200 OK[0m
+Error counting documents: 'admin_user' is not a valid ObjectId, it must be a 12-byte input or a 24-character hex string
+Error fetching admin performance metrics: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+[32mINFO[0m:     127.0.0.1:54781 - "[1mGET /api/admin/dashboard/performance-metrics?t=1763474990535 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:62935 - "[1mGET /api/dashboard/stats HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:54781 - "[1mOPTIONS /api/admin/dashboard/performance-metrics?t=1763474995483 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:57739 - "[1mOPTIONS /api/admin/dashboard/stats?t=1763474995484 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:57739 - "[1mGET /api/admin/dashboard/stats?t=1763474995484 HTTP/1.1[0m" [32m200 OK[0m
+Error fetching admin performance metrics: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+[32mINFO[0m:     127.0.0.1:54781 - "[1mGET /api/admin/dashboard/performance-metrics?t=1763474995483 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:53969 - "[1mOPTIONS /api/auth/login HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:61638 - "[1mPOST /api/auth/login HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:61638 - "[1mOPTIONS /api/auth/me HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:53969 - "[1mGET /api/notifications/my-notifications?skip=0&limit=5&include_read=false HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:61638 - "[1mGET /api/notifications/unread-count HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:53969 - "[1mGET /api/auth/me HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:61638 - "[1mGET /api/dashboard/stats HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:59501 - "[1mGET /profiles/3e630bc9bc2b43a38f0b744fa2f3b27f.png HTTP/1.1[0m" [31m404 Not Found[0m
+[32mINFO[0m:     127.0.0.1:50001 - "[1mOPTIONS /api/admin/dashboard/performance-metrics?t=1763475025489 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:55426 - "[1mOPTIONS /api/admin/dashboard/stats?t=1763475025489 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:50001 - "[1mGET /api/admin/dashboard/performance-metrics?t=1763475025489 HTTP/1.1[0m" [31m403 Forbidden[0m
+[32mINFO[0m:     127.0.0.1:55426 - "[1mGET /api/admin/dashboard/stats?t=1763475025489 HTTP/1.1[0m" [31m403 Forbidden[0m
+[32mINFO[0m:     127.0.0.1:49258 - "[1mOPTIONS /api/admin/tax-planning/stats HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:49258 - "[1mGET /api/admin/tax-planning/stats HTTP/1.1[0m" [31m403 Forbidden[0m
+[32mINFO[0m:     127.0.0.1:56342 - "[1mGET /api/notifications/my-notifications?skip=0&limit=5&include_read=false HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:49946 - "[1mGET /api/notifications/unread-count HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:61493 - "[1mOPTIONS /api/admin/dashboard/performance-metrics?t=1763475055486 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:51189 - "[1mOPTIONS /api/admin/dashboard/stats?t=1763475055487 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:61493 - "[1mGET /api/admin/dashboard/performance-metrics?t=1763475055486 HTTP/1.1[0m" [31m403 Forbidden[0m
+[32mINFO[0m:     127.0.0.1:51189 - "[1mGET /api/admin/dashboard/stats?t=1763475055487 HTTP/1.1[0m" [31m403 Forbidden[0m
+[32mINFO[0m:     127.0.0.1:59390 - "[1mGET /api/notifications/my-notifications?skip=0&limit=5&include_read=false HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:62886 - "[1mGET /api/notifications/unread-count HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:64801 - "[1mOPTIONS /api/admin/dashboard/performance-metrics?t=1763475085495 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:56262 - "[1mOPTIONS /api/admin/dashboard/stats?t=1763475085496 HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:64801 - "[1mGET /api/admin/dashboard/performance-metrics?t=1763475085495 HTTP/1.1[0m" [31m403 Forbidden[0m
+[32mINFO[0m:     127.0.0.1:56262 - "[1mGET /api/admin/dashboard/stats?t=1763475085496 HTTP/1.1[0m" [31m403 Forbidden[0m
+[32mINFO[0m:     127.0.0.1:58068 - "[1mGET /api/notifications/my-notifications?skip=0&limit=5&include_read=false HTTP/1.1[0m" [32m200 OK[0m
+[32mINFO[0m:     127.0.0.1:58068 - "[1mGET /api/notifications/unread-count HTTP/1.1[0m" [32m200 OK[0m
