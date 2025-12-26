@@ -127,8 +127,36 @@ class SIPApplicationRequest(BaseModel):
 class SIPApplicationResponse(BaseModel):
     id: str
     applicationNumber: str
+    
+    # Personal Information
     name: str
     email: str
+    phone: str
+    age: int
+    panNumber: str
+    
+    # SIP Details
+    sipAmount: float
+    sipFrequency: str
+    tenure: int
+    investmentGoal: str
+    riskProfile: str
+    
+    # Address & KYC
+    address: str
+    city: str
+    state: str
+    pincode: str
+    
+    # Documents
+    documents: Dict[str, Optional[str]] = {
+        "pan": None,
+        "aadhaar": None,
+        "photo": None,
+        "bankProof": None
+    }
+    
+    # Status & Tracking
     status: str
     submittedAt: datetime
     message: str = "Your SIP application has been submitted successfully!"

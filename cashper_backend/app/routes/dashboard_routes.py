@@ -20,194 +20,7 @@ router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 
 # ===================== DASHBOARD STATS & USER INFO ENDPOINTS =====================
 
-@router.get("/stats", response_model=Dict[str, Any])
-def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
-    """
-    Get dashboard statistics for the current user
-    
-    Returns:
-    - Total loans applied
-    - Active loans
-    - Total insurance policies
-    - Total investments
-    - Total documents
-    - Recent activities
-    """
-    try:
-        user_id = str(current_user["_id"])
-        
-        # Get various counts from database
-        from app.database.db import get_database
-        db = get_database()
-        
-        # Count ALL loans from all collections (personal, home, business, short-term)
-        personal_loans = db.personal_loans.count_documents({"userId": user_id})
-        home_loans = db.home_loans.count_documents({"userId": user_id})
-        business_loans = db.business_loans.count_documents({"userId": user_id})
-        short_term_loans = db.short_term_loans.count_documents({"userId": user_id})
-        
-        total_loans = personal_loans + home_loans + business_loans + short_term_loans
-        
-        # Count active loans (Pending, Under Review, Approved)
-        active_statuses = ["Pending", "Under Review", "Approved", "pending", "under_review", "approved"]
-        active_personal = db.personal_loans.count_documents({
-            "userId": user_id,
-            "status": {"$in": active_statuses}
-        })
-        active_home = db.home_loans.count_documents({
-            "userId": user_id,
-            "status": {"$in": active_statuses}
-        })
-        active_business = db.business_loans.count_documents({
-            "userId": user_id,
-            "status": {"$in": active_statuses}
-        })
-        active_short_term = db.short_term_loans.count_documents({
-            "userId": user_id,
-            "status": {"$in": active_statuses}
-        })
-        
-        active_loans = active_personal + active_home + active_business + active_short_term
-        
-        # Count insurance policies from all collections
-        health_insurance = db.health_insurance_inquiries.count_documents({"userId": user_id})
-        motor_insurance = db.motor_insurance_inquiries.count_documents({"userId": user_id})
-        term_insurance = db.term_insurance_inquiries.count_documents({"userId": user_id})
-        total_insurance = health_insurance + motor_insurance + term_insurance
-        
-        # Count investments (SIP and mutual funds)
-        sip_investments = db.sip_inquiries.count_documents({"userId": user_id})
-        mutual_fund_investments = db.mutual_fund_inquiries.count_documents({"userId": user_id})
-        total_investments = sip_investments + mutual_fund_investments
-        
-        # Count documents
-        total_documents = dashboard_repository.count_user_documents(user_id)
-        
-        # Count support tickets
-        total_support_tickets = db.support_tickets.count_documents({"userId": user_id})
-        pending_tickets = db.support_tickets.count_documents({
-            "userId": user_id,
-            "status": "pending"
-        })
-        
-        # Count notifications (unread)
-        unread_notifications = db.notifications.count_documents({
-            "$or": [
-                {"targetUsers": {"$size": 0}},
-                {"targetUsers": user_id}
-            ],
-            "isActive": True,
-            "readBy": {"$ne": user_id}
-        })
-        
-        # Real-time Service Usage and Availability Counts
-        # Tax Planning Services - Count actual tax service applications/inquiries
-        personal_tax_count = db.personal_tax_inquiries.count_documents({"userId": user_id}) if "personal_tax_inquiries" in db.list_collection_names() else 0
-        business_tax_count = db.business_tax_inquiries.count_documents({"userId": user_id}) if "business_tax_inquiries" in db.list_collection_names() else 0
-        tax_services_used = personal_tax_count + business_tax_count
-        tax_services_available = 2  # Personal Tax + Business Tax
-        
-        # Retail Services (Individual) - Count all individual service applications
-        # ITR, PAN, Aadhaar, PF, Bank Account, Trading/Demat, etc.
-        retail_collections = [
-            "itr_filing_inquiries",
-            "pan_card_inquiries", 
-            "aadhaar_update_inquiries",
-            "provident_fund_inquiries",
-            "bank_account_inquiries",
-            "trading_demat_inquiries",
-            "legal_advice_inquiries",
-            "financial_planning_inquiries",
-            "pan_update_inquiries",
-            "itr_revision_inquiries"
-        ]
-        retail_services_used = sum(
-            db[collection].count_documents({"userId": user_id})
-            for collection in retail_collections
-            if collection in db.list_collection_names()
-        )
-        retail_services_available = 10  # Total retail services (File ITR, Revise ITR, PAN, Aadhaar, PF, etc.)
-        
-        # Corporate Services (Business) - Count all business service applications  
-        # Company Registration, GST, TDS, Compliance, Accounting, Payroll, etc.
-        corporate_collections = [
-            "company_registration_inquiries",
-            "gst_service_inquiries",
-            "tds_service_inquiries", 
-            "compliance_inquiries",
-            "accounting_inquiries",
-            "payroll_inquiries",
-            "tax_audit_inquiries",
-            "legal_advice_business_inquiries",
-            "provident_fund_business_inquiries",
-            "business_registration_inquiries"
-        ]
-        corporate_services_used = sum(
-            db[collection].count_documents({"userId": user_id})
-            for collection in corporate_collections
-            if collection in db.list_collection_names()
-        )
-        corporate_services_available = 10  # Total corporate services
-        
-        # Financial Calculators - Count unique calculator usage sessions
-        calculators_used = db.calculator_usage.count_documents({"userId": user_id}) if "calculator_usage" in db.list_collection_names() else 0
-        calculators_available = 9  # Personal Loan, Home Loan, Business Loan, Car Loan, Mutual Funds, SIP, Personal Tax, Business Tax, Insurance
-        
-        return {
-            "loans": {
-                "total": total_loans,
-                "active": active_loans,
-                "completed": total_loans - active_loans
-            },
-            "insurance": {
-                "total": total_insurance,
-                "health": health_insurance,
-                "motor": motor_insurance,
-                "term": term_insurance
-            },
-            "investments": {
-                "total": total_investments,
-                "sip": sip_investments,
-                "mutualFunds": mutual_fund_investments
-            },
-            "documents": total_documents,
-            "support": {
-                "total": total_support_tickets,
-                "pending": pending_tickets,
-                "resolved": total_support_tickets - pending_tickets
-            },
-            "notifications": {
-                "unread": unread_notifications
-            },
-            "services": {
-                "taxPlanning": {
-                    "used": tax_services_used,
-                    "available": tax_services_available
-                },
-                "retailServices": {
-                    "used": retail_services_used,
-                    "available": retail_services_available
-                },
-                "corporateServices": {
-                    "used": corporate_services_used,
-                    "available": corporate_services_available
-                },
-                "calculators": {
-                    "used": calculators_used,
-                    "available": calculators_available
-                }
-            }
-        }
-        
-    except Exception as e:
-        print(f"Dashboard stats error: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch dashboard statistics. Error: {str(e)}"
-        )
-
+# Stats endpoint removed - no longer needed in UI
 
 @router.get("/user-info", response_model=Dict[str, Any])
 def get_user_quick_info(current_user: dict = Depends(get_current_user)):
@@ -712,6 +525,166 @@ def delete_document(
 
 # ===================== INSURANCE MANAGEMENT ENDPOINTS =====================
 
+@router.get("/insurance", response_model=Dict[str, Any])
+def get_user_insurance_overview(current_user: dict = Depends(get_current_user)):
+    """
+    Get comprehensive insurance overview for the current user
+    
+    Returns:
+    - All insurance applications (real form submissions)
+    - Summary statistics
+    - Recent insurance activities
+    """
+    
+    def map_status(db_status):
+        """Map database status to filter-friendly status"""
+        status_lower = (db_status or "pending").lower()
+        
+        # Map various status values to standard ones
+        if status_lower in ["submitted", "under review", "under_review", "processing"]:
+            return "Pending"
+        elif status_lower in ["approved", "active", "accepted"]:
+            return "Active"
+        elif status_lower in ["rejected", "declined", "denied"]:
+            return "Cancelled"
+        elif status_lower in ["expired"]:
+            return "Expired"
+        elif status_lower in ["expiring", "expiring soon", "expiring_soon"]:
+            return "Expiring Soon"
+        else:
+            return "Pending"
+    
+    try:
+        user_id = str(current_user["_id"])
+        from app.database.db import get_database
+        db = get_database()
+        
+        # Get all policies from applications (real form submissions)
+        policies = []
+        
+        # Health Insurance Applications - REAL DATA
+        health_apps = db.health_insurance_applications.find({"userId": user_id}).sort("createdAt", -1)
+        health_count = 0
+        for app in health_apps:
+            health_count += 1
+            created_date = app.get("createdAt", datetime.utcnow())
+            
+            policies.append({
+                "id": str(app["_id"]),
+                "type": "Health Insurance",
+                "provider": app.get("insuranceProvider", "Star Health"),
+                "policyNumber": app.get("applicationNumber", f"HI{str(app['_id'])[-11:]}"),
+                "premium": f"₹{app.get('monthlyPremium', 0)}" if app.get('monthlyPremium') else "₹0",
+                "coverage": f"₹{app.get('sumInsured', 0)}" if app.get('sumInsured') else "N/A",
+                "status": map_status(app.get("status", "submitted")),
+                "appliedDate": created_date.strftime("%b %d, %Y"),
+                "familyMembers": app.get("numberOfMembers", 1),
+                "coverageAmount": app.get("coverageAmount", app.get("sumInsured", "N/A")),
+                "name": app.get("name", ""),
+                "email": app.get("email", ""),
+                "phone": app.get("phone", ""),
+                "age": app.get("age", ""),
+                "gender": app.get("gender", ""),
+                "renewalDate": created_date.strftime("%b %d, %Y") if created_date else "N/A",
+                "daysToRenewal": 365
+            })
+        
+        # Motor Insurance Applications - REAL DATA
+        motor_apps = db.motor_insurance_applications.find({"userId": user_id}).sort("createdAt", -1)
+        motor_count = 0
+        for app in motor_apps:
+            motor_count += 1
+            created_date = app.get("createdAt", datetime.utcnow())
+            
+            policies.append({
+                "id": str(app["_id"]),
+                "type": "Motor Insurance",
+                "provider": app.get("insuranceProvider", "ICICI Lombard"),
+                "policyNumber": app.get("applicationNumber", f"MI{str(app['_id'])[-11:]}"),
+                "premium": f"₹{app.get('monthlyPremium', 0)}" if app.get('monthlyPremium') else "₹0",
+                "coverage": f"₹{app.get('sumInsured', 0)}" if app.get('sumInsured') else "N/A",
+                "status": map_status(app.get("status", "submitted")),
+                "appliedDate": created_date.strftime("%b %d, %Y"),
+                "vehicleNumber": app.get("vehicleNumber", "N/A"),
+                "vehicleType": app.get("vehicleType", "Car"),
+                "name": app.get("name", ""),
+                "email": app.get("email", ""),
+                "phone": app.get("phone", ""),
+                "renewalDate": created_date.strftime("%b %d, %Y") if created_date else "N/A",
+                "daysToRenewal": 365
+            })
+        
+        # Term Insurance Applications - REAL DATA
+        term_apps = db.term_insurance_applications.find({"userId": user_id}).sort("createdAt", -1)
+        term_count = 0
+        for app in term_apps:
+            term_count += 1
+            created_date = app.get("createdAt", datetime.utcnow())
+            
+            policies.append({
+                "id": str(app["_id"]),
+                "type": "Term Insurance",
+                "provider": app.get("insuranceProvider", "LIC"),
+                "policyNumber": app.get("applicationNumber", f"TI{str(app['_id'])[-11:]}"),
+                "premium": f"₹{app.get('monthlyPremium', 0)}" if app.get('monthlyPremium') else "₹0",
+                "coverage": f"₹{app.get('sumInsured', 0)}" if app.get('sumInsured') else "N/A",
+                "status": map_status(app.get("status", "submitted")),
+                "appliedDate": created_date.strftime("%b %d, %Y"),
+                "coverageAmount": app.get("coverageAmount", app.get("sumInsured", "N/A")),
+                "term": app.get("policyTerm", "20 years"),
+                "name": app.get("name", ""),
+                "email": app.get("email", ""),
+                "phone": app.get("phone", ""),
+                "age": app.get("age", ""),
+                "gender": app.get("gender", ""),
+                "renewalDate": created_date.strftime("%b %d, %Y") if created_date else "N/A",
+                "daysToRenewal": 365
+            })
+        
+        total_policies = len(policies)
+        active_count = sum(1 for p in policies if p.get("status") == "Active")
+        
+        # Calculate total coverage and premium
+        total_coverage = 0
+        total_premium = 0
+        for policy in policies:
+            # Parse coverage
+            coverage_str = policy.get("coverage", "0").replace("₹", "").replace(",", "")
+            try:
+                total_coverage += int(coverage_str) if coverage_str.isdigit() else 0
+            except:
+                pass
+            
+            # Parse premium
+            premium_str = policy.get("premium", "0").replace("₹", "").replace(",", "")
+            try:
+                total_premium += int(premium_str) if premium_str.isdigit() else 0
+            except:
+                pass
+        
+        return {
+            "summary": {
+                "activePolicies": active_count,
+                "totalCoverage": total_coverage,
+                "annualPremium": total_premium,
+                "healthInsurance": health_count,
+                "motorInsurance": motor_count,
+                "termInsurance": term_count
+            },
+            "policies": policies,
+            "totalPolicies": total_policies
+        }
+        
+    except Exception as e:
+        print(f"Insurance overview error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch insurance overview. Error: {str(e)}"
+        )
+
+
 @router.get("/insurance/summary", response_model=Dict[str, Any])
 def get_insurance_summary(current_user: dict = Depends(get_current_user)):
     """
@@ -851,6 +824,123 @@ def get_insurance_policies(current_user: dict = Depends(get_current_user)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch insurance policies. Error: {str(e)}"
+        )
+
+
+@router.get("/insurance/applications", response_model=List[Dict[str, Any]])
+def get_insurance_applications(current_user: dict = Depends(get_current_user)):
+    """
+    Get all insurance applications (full forms) submitted by the current user
+    
+    Returns list of applications from:
+    - Health Insurance applications
+    - Motor Insurance applications
+    - Term Insurance applications
+    """
+    try:
+        user_id = str(current_user["_id"])
+        from app.database.db import get_database
+        db = get_database()
+        
+        applications = []
+        
+        # Health Insurance Applications
+        health_apps = db.health_insurance_applications.find({"userId": user_id}).sort("createdAt", -1)
+        for app in health_apps:
+            applications.append({
+                "id": str(app["_id"]),
+                "type": "Health Insurance",
+                "applicationNumber": app.get("applicationNumber", "N/A"),
+                "name": app.get("name", ""),
+                "email": app.get("email", ""),
+                "phone": app.get("phone", ""),
+                "age": app.get("age", ""),
+                "gender": app.get("gender", ""),
+                "familySize": app.get("familySize", ""),
+                "coverageAmount": app.get("coverageAmount", ""),
+                "policyType": app.get("policyType", ""),
+                "address": app.get("address", ""),
+                "city": app.get("city", ""),
+                "state": app.get("state", ""),
+                "pincode": app.get("pincode", ""),
+                "status": app.get("status", "pending"),
+                "createdAt": app.get("createdAt", datetime.utcnow()).strftime("%b %d, %Y"),
+                "documents": {
+                    "aadhar": "✓" if app.get("aadhar") else "✗",
+                    "pan": "✓" if app.get("pan") else "✗",
+                    "photo": "✓" if app.get("photo") else "✗",
+                    "medicalReports": "✓" if app.get("medicalReports") else "✗",
+                    "addressProof": "✓" if app.get("addressProof") else "✗"
+                }
+            })
+        
+        # Motor Insurance Applications
+        motor_apps = db.motor_insurance_applications.find({"userId": user_id}).sort("createdAt", -1)
+        for app in motor_apps:
+            applications.append({
+                "id": str(app["_id"]),
+                "type": "Motor Insurance",
+                "applicationNumber": app.get("applicationNumber", "N/A"),
+                "name": app.get("name", ""),
+                "email": app.get("email", ""),
+                "phone": app.get("phone", ""),
+                "vehicleType": app.get("vehicleType", ""),
+                "vehicleNumber": app.get("vehicleNumber", ""),
+                "registrationYear": app.get("registrationYear", ""),
+                "address": app.get("address", ""),
+                "city": app.get("city", ""),
+                "state": app.get("state", ""),
+                "status": app.get("status", "pending"),
+                "createdAt": app.get("createdAt", datetime.utcnow()).strftime("%b %d, %Y"),
+                "documents": {
+                    "aadhar": "✓" if app.get("aadhar") else "✗",
+                    "pan": "✓" if app.get("pan") else "✗",
+                    "drivingLicense": "✓" if app.get("drivingLicense") else "✗",
+                    "vehicleRc": "✓" if app.get("vehicleRc") else "✗",
+                    "photo": "✓" if app.get("photo") else "✗"
+                }
+            })
+        
+        # Term Insurance Applications
+        term_apps = db.term_insurance_applications.find({"userId": user_id}).sort("createdAt", -1)
+        for app in term_apps:
+            applications.append({
+                "id": str(app["_id"]),
+                "type": "Term Insurance",
+                "applicationNumber": app.get("applicationNumber", "N/A"),
+                "name": app.get("name", ""),
+                "email": app.get("email", ""),
+                "phone": app.get("phone", ""),
+                "age": app.get("age", ""),
+                "gender": app.get("gender", ""),
+                "coverageAmount": app.get("coverageAmount", ""),
+                "policyTerm": app.get("policyTerm", ""),
+                "address": app.get("address", ""),
+                "city": app.get("city", ""),
+                "state": app.get("state", ""),
+                "status": app.get("status", "pending"),
+                "createdAt": app.get("createdAt", datetime.utcnow()).strftime("%b %d, %Y"),
+                "documents": {
+                    "aadhar": "✓" if app.get("aadhar") else "✗",
+                    "pan": "✓" if app.get("pan") else "✗",
+                    "photo": "✓" if app.get("photo") else "✗",
+                    "medicalReports": "✓" if app.get("medicalReports") else "✗",
+                    "addressProof": "✓" if app.get("addressProof") else "✗"
+                }
+            })
+        
+        # Sort all applications by creation date (newest first)
+        applications.sort(key=lambda x: x["createdAt"], reverse=True)
+        
+        return applications
+        
+    except Exception as e:
+        print(f"Insurance applications error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch insurance applications. Error: {str(e)}"
         )
 
 

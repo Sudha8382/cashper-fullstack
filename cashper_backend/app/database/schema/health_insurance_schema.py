@@ -94,15 +94,33 @@ class HealthInsuranceApplicationRequest(BaseModel):
 class HealthInsuranceApplicationResponse(BaseModel):
     id: str
     applicationNumber: str
+    # Personal Information
     name: str
     email: str
     phone: str
+    age: int
+    gender: str
+    
+    # Policy Details
+    familySize: int
     coverageAmount: str
     policyType: str
+    existingConditions: Optional[str] = None
+    
+    # Address Information
+    address: str
+    city: str
+    state: str
+    pincode: str
+    
+    # Status and Metadata
     status: ApplicationStatus
     submittedAt: datetime
     message: str
-    # Include documents in response
+    userId: Optional[str] = None
+    remarks: Optional[str] = None
+    
+    # Documents
     aadhar: Optional[str] = None
     pan: Optional[str] = None
     photo: Optional[str] = None
@@ -110,6 +128,7 @@ class HealthInsuranceApplicationResponse(BaseModel):
     addressProof: Optional[str] = None
 
 class HealthInsuranceApplicationInDB(BaseModel):
+    userId: str  # User ID from auth token
     applicationNumber: str
     # Personal Information
     name: str

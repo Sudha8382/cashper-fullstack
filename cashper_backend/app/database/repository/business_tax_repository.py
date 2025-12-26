@@ -215,6 +215,15 @@ class BusinessTaxRepository:
         collection = self.get_application_collection()
         return collection.find_one({"businessPAN": pan.upper()})
 
+    def get_applications_by_email(self, email: str) -> List[Dict]:
+        """Get all business tax planning applications for a specific user by email"""
+        collection = self.get_application_collection()
+        applications = list(
+            collection.find({"businessEmail": email.lower()})
+            .sort("createdAt", -1)
+        )
+        return applications
+
     def update_application_status(
         self, 
         application_id: str, 

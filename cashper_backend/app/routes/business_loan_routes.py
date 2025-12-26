@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends
 from typing import List, Optional
 from datetime import datetime
 
@@ -14,6 +14,7 @@ from app.database.schema.business_loan_schema import (
 )
 from app.database.repository import business_loan_repository
 from app.utils.file_upload import save_upload_file
+from app.utils.auth import get_current_user
 
 router = APIRouter(prefix="/api/business-loan", tags=["Business Loan"])
 
@@ -190,12 +191,22 @@ async def get_uploaded_documents(application_id: Optional[str] = None):
 # ============ APPLICATION ENDPOINTS ============
 
 @router.post("/apply", response_model=BusinessLoanApplicationResponse)
-async def submit_business_loan_application(data: BusinessLoanApplicationCreate):
-    """Submit Business Loan application"""
+async def submit_business_loan_application(
+    data: BusinessLoanApplicationCreate,
+    current_user: Optional[dict] = Depends(get_current_user)
+):
+    """Submit Business Loan application - Works with or without login"""
     try:
+        # Convert to dict
+        data_dict = data.model_dump()
+        
+        # Add userId from authenticated user if available
+        if current_user:
+            data_dict['userId'] = str(current_user["_id"])
+        
         # Convert to DB model (will auto-generate application_id and set status)
         db_data = BusinessLoanApplicationInDB(
-            **data.model_dump(),
+            **data_dict,
             application_id="",  # Will be generated in repository
             status="pending"
         ).model_dump()
@@ -239,10 +250,13 @@ async def submit_business_loan_application(data: BusinessLoanApplicationCreate):
         raise HTTPException(status_code=500, detail=f"Failed to submit application: {str(e)}")
 
 @router.get("/applications", response_model=List[BusinessLoanApplicationResponse])
-async def get_all_applications():
-    """Get all Business Loan applications"""
+async def get_all_applications(current_user: dict = Depends(get_current_user)):
+    """Get authenticated user's Business Loan applications"""
     try:
-        applications = business_loan_repository.get_all_applications()
+        from app.database.db import get_database
+        db = get_database()
+        user_id_str = str(current_user["_id"])
+        applications = list(db["business_loan_applications"].find({"userId": user_id_str}))
         return [
             BusinessLoanApplicationResponse(
                 id=str(app["_id"]),

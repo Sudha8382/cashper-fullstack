@@ -16,6 +16,7 @@ from app.database.schema.personal_tax_schema import (
 )
 from app.database.repository.personal_tax_repository import personal_tax_repository
 from app.utils.auth_middleware import get_current_user_optional
+from app.utils.auth import get_current_user, get_optional_user
 from datetime import datetime
 import math
 
@@ -175,7 +176,10 @@ def calculate_tax_savings(calculation: TaxCalculatorRequest):
 
 
 @router.post("/application/submit", response_model=PersonalTaxPlanningApplicationResponse, status_code=status.HTTP_201_CREATED)
-def submit_tax_planning_application(application: PersonalTaxPlanningApplicationRequest):
+def submit_tax_planning_application(
+    application: PersonalTaxPlanningApplicationRequest,
+    current_user: Optional[dict] = Depends(get_optional_user)
+):
     """
     Submit application for personal tax planning service (PUBLIC - No authentication required)
     
@@ -214,6 +218,7 @@ def submit_tax_planning_application(application: PersonalTaxPlanningApplicationR
             employmentType=application.employmentType.value,
             preferredTaxRegime=application.preferredTaxRegime.value if application.preferredTaxRegime else None,
             additionalInfo=application.additionalInfo,
+            userId=str(current_user["_id"]) if current_user else None,
             status=ConsultationStatus.PENDING,
             createdAt=datetime.utcnow()
         )
@@ -444,18 +449,48 @@ def get_calculation_by_id(
 def get_all_applications(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-    status: Optional[str] = Query(None, description="Filter by status"),
+    status_filter: Optional[str] = Query(None, description="Filter by status"),
     assigned_to: Optional[str] = Query(None, description="Filter by assigned consultant"),
-    current_user: dict = Depends(get_current_user_optional)
+    current_user: Optional[dict] = Depends(get_optional_user)
 ):
-    """Get all tax planning applications (ADMIN ONLY)"""
+    """Get all tax planning applications (User sees own, Admin sees all)"""
     try:
-        applications = personal_tax_repository.get_all_applications(
-            skip=skip,
-            limit=limit,
-            status=status,
-            assigned_to=assigned_to
-        )
+        # If no user logged in, return empty list
+        if not current_user:
+            return []
+        
+        # Check if user is admin
+        is_admin = current_user.get("isAdmin", False)
+        
+        if is_admin:
+            # Admin can see all applications
+            applications = personal_tax_repository.get_all_applications(
+                skip=skip,
+                limit=limit,
+                status=status_filter,
+                assigned_to=assigned_to
+            )
+        else:
+            # Regular user sees only their own applications
+            from app.database.db import get_database
+            db = get_database()
+            user_id_str = str(current_user["_id"])
+            
+            # Build query
+            query = {"userId": user_id_str}
+            if status_filter:
+                query["status"] = status_filter
+            if assigned_to:
+                query["assignedTo"] = assigned_to
+            
+            # Fetch user's applications
+            applications = list(
+                db["tax_planning_applications"]
+                .find(query)
+                .sort("createdAt", -1)
+                .skip(skip)
+                .limit(limit)
+            )
         
         return [
             PersonalTaxPlanningApplicationResponse(
@@ -468,6 +503,7 @@ def get_all_applications(
                 employmentType=app["employmentType"],
                 preferredTaxRegime=app.get("preferredTaxRegime"),
                 additionalInfo=app.get("additionalInfo"),
+                userId=app.get("userId"),
                 status=ConsultationStatus(app["status"]),
                 createdAt=app["createdAt"],
                 assignedTo=app.get("assignedTo"),
@@ -507,6 +543,7 @@ def get_application_by_id(
         employmentType=application["employmentType"],
         preferredTaxRegime=application.get("preferredTaxRegime"),
         additionalInfo=application.get("additionalInfo"),
+        userId=application.get("userId"),
         status=ConsultationStatus(application["status"]),
         createdAt=application["createdAt"],
         assignedTo=application.get("assignedTo"),
@@ -603,6 +640,56 @@ def delete_application(
         )
     
     return {"message": "Tax planning application deleted successfully"}
+
+
+# ===================== USER ENDPOINTS - GET OWN DATA =====================
+
+@router.get("/application/user/{email}", response_model=List[PersonalTaxPlanningApplicationResponse])
+def get_user_applications(
+    email: str,
+    current_user: dict = Depends(get_current_user_optional)
+):
+    """
+    Get all tax planning applications for a specific user by email
+    
+    This endpoint allows users to retrieve THEIR OWN applications by email address.
+    No authentication required - anyone can query by email to get their submitted data.
+    
+    Path parameters:
+    - email: User's email address
+    
+    Returns:
+    - List of all tax planning applications submitted by this user
+    """
+    try:
+        email_lower = email.lower()
+        applications = personal_tax_repository.get_applications_by_email(email_lower)
+        
+        return [
+            PersonalTaxPlanningApplicationResponse(
+                id=str(app["_id"]),
+                fullName=app["fullName"],
+                emailAddress=app["emailAddress"],
+                phoneNumber=app["phoneNumber"],
+                panNumber=app["panNumber"],
+                annualIncome=app["annualIncome"],
+                employmentType=app["employmentType"],
+                preferredTaxRegime=app.get("preferredTaxRegime"),
+                additionalInfo=app.get("additionalInfo"),
+                userId=app.get("userId"),
+                status=ConsultationStatus(app["status"]),
+                createdAt=app["createdAt"],
+                assignedTo=app.get("assignedTo"),
+                adminNotes=app.get("adminNotes")
+            )
+            for app in applications
+        ]
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch user applications. Error: {str(e)}"
+        )
 
 
 # ===================== STATISTICS ENDPOINT =====================

@@ -96,16 +96,34 @@ class MotorInsuranceApplicationRequest(BaseModel):
 class MotorInsuranceApplicationResponse(BaseModel):
     id: str
     applicationNumber: str
+    # Personal Information
     name: str
     email: str
     phone: str
+    age: int
+    
+    # Vehicle Details
     vehicleType: str
     registrationNumber: str
+    makeModel: str
+    manufacturingYear: int
+    vehicleValue: float
     policyType: str
+    
+    # Address Information
+    address: str
+    city: str
+    state: str
+    pincode: str
+    
+    # Status and Metadata
     status: ApplicationStatus
     submittedAt: datetime
     message: str
-    # Include documents in response
+    userId: Optional[str] = None
+    remarks: Optional[str] = None
+    
+    # Documents
     rc: Optional[str] = None
     dl: Optional[str] = None
     vehiclePhotos: Optional[str] = None
@@ -113,6 +131,7 @@ class MotorInsuranceApplicationResponse(BaseModel):
     addressProof: Optional[str] = None
 
 class MotorInsuranceApplicationInDB(BaseModel):
+    userId: str  # User ID from auth token
     applicationNumber: str
     # Personal Information
     name: str

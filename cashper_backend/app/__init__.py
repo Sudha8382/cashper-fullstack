@@ -1,8 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from contextlib import asynccontextmanager
+import os
+from pathlib import Path
+import traceback
 from app.database.db import connect_to_mongo, close_mongo_connection
 from app.startup_migration import migrate_inquiry_status
 from app.routes.auth_routes import router as auth_router
@@ -31,6 +34,11 @@ from app.routes.admin_investment_routes import router as admin_investment_router
 from app.routes.admin_insurance_management_routes import router as admin_insurance_management_router
 from app.routes.admin_loan_management_routes import router as admin_loan_management_router
 from app.routes.admin_reports_routes import router as admin_reports_router
+from app.routes.retail_services_routes import router as retail_services_router
+from app.routes.user_retail_services_routes import router as user_retail_services_router
+from app.routes.business_services import router as business_services_router
+from app.routes.applications.retail_applications import router as retail_applications_router
+from app.routes.inquiry.corporate_inquiry import router as corporate_inquiry_router
 from app.utils.file_upload import init_upload_directories
 
 
@@ -84,6 +92,31 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    Global exception handler to catch and log all unhandled exceptions
+    """
+    print(f"\n{'='*60}")
+    print(f"UNHANDLED EXCEPTION in {request.method} {request.url.path}")
+    print(f"{'='*60}")
+    print(f"Exception Type: {type(exc).__name__}")
+    print(f"Exception Message: {str(exc)}")
+    print(f"\nFull Traceback:")
+    traceback.print_exc()
+    print(f"{'='*60}\n")
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+            "error": str(exc),
+            "type": type(exc).__name__
+        }
+    )
+
 # Include routers
 app.include_router(auth_router)  # Already has prefix="/api/auth"
 app.include_router(contact_router)  # Already has prefix="/api/contact"
@@ -111,15 +144,31 @@ app.include_router(admin_investment_router)  # Already has prefix="/api/admin/in
 app.include_router(admin_insurance_management_router, prefix="/api")  # Route prefix: /admin/insurance-management
 app.include_router(admin_loan_management_router, prefix="/api")  # Route prefix: /admin/loan-management
 app.include_router(admin_reports_router)  # Already has prefix="/api/admin/reports"
+app.include_router(retail_services_router)  # Already has prefix="/api/retail-services"
+app.include_router(user_retail_services_router)  # Already has prefix="/api/user/retail-services"
+app.include_router(business_services_router)  # Already has prefix="/api/business-services"
+app.include_router(retail_applications_router)  # Already has prefix="/api/applications"
+app.include_router(corporate_inquiry_router)  # Already has prefix="/api/corporate-inquiry"
 
 # Create uploads directory before mounting (if it doesn't exist)
 init_upload_directories()
 
-# Mount static files (for serving uploaded images)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# Mount static files with absolute path
+# Get the backend directory (parent of app/)
+backend_dir = Path(__file__).parent.parent
+uploads_path = backend_dir / "uploads"
+
+print(f"[INFO] Backend directory: {backend_dir}")
+print(f"[INFO] Uploads directory: {uploads_path}")
+print(f"[INFO] Uploads exists: {uploads_path.exists()}")
+
+# Mount static files (for serving uploaded files)
+app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")
 
 # Also mount documents at /documents endpoint for backward compatibility
-app.mount("/documents", StaticFiles(directory="uploads/documents"), name="documents")
+documents_path = uploads_path / "documents"
+if documents_path.exists():
+    app.mount("/documents", StaticFiles(directory=str(documents_path)), name="documents")
 
 
 @app.get("/")

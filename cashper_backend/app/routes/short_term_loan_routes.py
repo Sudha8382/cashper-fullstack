@@ -19,6 +19,7 @@ from app.database.repository.short_term_loan_repository import (
 )
 from app.utils.auth_middleware import verify_admin_token
 from app.utils.file_upload import save_upload_file
+from app.utils.auth import get_current_user, get_optional_user
 import jwt
 
 router = APIRouter(prefix="/api/short-term-loan", tags=["Short Term Loan"])
@@ -213,7 +214,7 @@ async def get_uploaded_documents(application_id: Optional[str] = None, admin_use
 @router.post("/applications", response_model=ShortTermLoanApplicationResponse, status_code=201)
 async def submit_short_term_loan_application(
     data: ShortTermLoanApplicationCreate,
-    user_id: Optional[str] = Depends(get_optional_user_id)
+    current_user: Optional[dict] = Depends(get_optional_user)
 ):
     """
     Submit Short Term Loan Application
@@ -222,9 +223,19 @@ async def submit_short_term_loan_application(
     - Returns unique application ID for tracking
     """
     app_data = data.dict()
-    app_data["userId"] = user_id
+    # Capture userId if user is logged in
+    app_data["userId"] = str(current_user["_id"]) if current_user else None
+    
+    print(f"\n📝 SHORT-TERM LOAN POST ENDPOINT")
+    print(f"✓ Current user logged in: {current_user is not None}")
+    if current_user:
+        print(f"✓ User ID: {current_user.get('_id')}")
+        print(f"✓ Saving userId as string: {app_data['userId']} (type: {type(app_data['userId']).__name__})")
     
     result = ShortTermLoanApplicationRepository.create(app_data)
+    print(f"✓ Application saved with ID: {result.get('_id')}")
+    print(f"✓ Stored userId in DB: {result.get('userId')} (type: {type(result.get('userId')).__name__})")
+    
     return ShortTermLoanApplicationResponse(
         id=result["_id"],
         applicationId=result.get("application_id", ""),
@@ -260,17 +271,95 @@ async def submit_short_term_loan_application(
 
 
 @router.get("/applications", response_model=List[ShortTermLoanApplicationResponse])
-async def get_all_applications(admin_user: dict = Depends(verify_admin_token)):
-    """Get all Short Term Loan applications (Admin only)"""
+async def get_all_applications(current_user: dict = Depends(get_current_user)):
+    """
+    Get Short Term Loan applications
+    - Admin: Gets all applications
+    - Regular user: Gets only their own applications
+    """
     try:
-        applications = ShortTermLoanApplicationRepository.get_all()
+        from app.database.db import get_database
+        db = get_database()
+        
+        print(f"\n🔍 SHORT-TERM LOAN GET ENDPOINT")
+        print(f"✓ Current user: {current_user.get('_id')}, Email: {current_user.get('email')}")
+        
+        # Check if user is admin
+        is_admin = current_user.get("isAdmin", False) or current_user.get("role") == "admin"
+        print(f"Admin check: is_admin = {is_admin}")
+        
+        if is_admin:
+            # Admin gets all applications
+            print("👨‍💼 Admin user - fetching all short-term loan applications")
+            applications = list(db["short_term_loan_applications"].find())
+        else:
+            # Regular user gets only their applications
+            user_id_str = str(current_user["_id"])
+            print(f"📝 Searching short-term loans with userId: {user_id_str}")
+            
+            # First, let's see what's in the database
+            all_apps = list(db["short_term_loan_applications"].find())
+            print(f"📊 Total short-term loans in database: {len(all_apps)}")
+            
+            # Show sample userId values from database
+            if all_apps:
+                print(f"📋 Sample database records userId types:")
+                for app in all_apps[:3]:
+                    stored_id = app.get("userId")
+                    print(f"  - Stored userId: {stored_id} (type: {type(stored_id).__name__})")
+                    print(f"    Query userId: {user_id_str} (type: {type(user_id_str).__name__})")
+                    print(f"    Match: {stored_id == user_id_str}")
+            
+            # Query for user's applications
+            applications = list(db["short_term_loan_applications"].find({"userId": user_id_str}))
+            print(f"✓ Found {len(applications)} short-term loan applications for user")
+        
         if not applications:
+            print(f"📤 No applications found, returning empty list")
             return []
+        
+        print(f"📤 Returning {len(applications)} short-term loan applications")
+        
         return [
-            ShortTermLoanApplicationResponse(id=app["_id"], **{k: v for k, v in app.items() if k != "_id"})
+            ShortTermLoanApplicationResponse(
+                id=str(app["_id"]),
+                fullName=app.get("fullName", ""),
+                email=app.get("email", ""),
+                phone=app.get("phone", ""),
+                relativeName=app.get("relativeName", ""),
+                relativeRelation=app.get("relativeRelation", ""),
+                relativePhone=app.get("relativePhone", ""),
+                loanAmount=str(app.get("loanAmount", "")),
+                purpose=app.get("purpose", ""),
+                employment=app.get("employment", ""),
+                monthlyIncome=str(app.get("monthlyIncome", "")),
+                companyName=app.get("companyName"),
+                workExperience=app.get("workExperience"),
+                creditScore=app.get("creditScore"),
+                panNumber=app.get("panNumber", ""),
+                aadharNumber=app.get("aadharNumber", ""),
+                address=app.get("address", ""),
+                city=app.get("city", ""),
+                state=app.get("state", ""),
+                pincode=app.get("pincode", ""),
+                aadhar=app.get("aadhar"),
+                pan=app.get("pan"),
+                bankStatement=app.get("bankStatement"),
+                salarySlip=app.get("salarySlip"),
+                photo=app.get("photo"),
+                userId=app.get("userId"),
+                applicationId=app.get("application_id", app.get("applicationId", "")),
+                status=app.get("status", "pending"),
+                notes=app.get("notes"),
+                createdAt=app.get("createdAt", app.get("created_at", datetime.now()))
+            )
             for app in applications
         ]
     except Exception as e:
+        import traceback
+        print(f"\n❌ ERROR in Short Term Loan /applications:")
+        print(f"Exception: {str(e)}")
+        print(f"Traceback:\n{traceback.format_exc()}")
         # If collection doesn't exist or any error, return empty list
         return []
 

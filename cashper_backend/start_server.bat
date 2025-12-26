@@ -1,7 +1,13 @@
 @echo off
-echo ========================================
-echo   Cashper Backend Server Startup
-echo ========================================
+cls
+echo.
+echo ============================================================
+echo 🚀 Starting Cashper Backend Server...
+echo ============================================================
+echo 📡 Server URL: http://127.0.0.1:8000
+echo 📚 Swagger UI: http://127.0.0.1:8000/docs
+echo 🔄 Auto-reload: Enabled
+echo ============================================================
 echo.
 
 REM Check if virtual environment exists
@@ -12,27 +18,12 @@ if not exist "venv\" (
     echo.
 )
 
-REM Activate virtual environment
-echo Activating virtual environment...
-call venv\Scripts\activate
+REM Activate virtual environment (if exists)
+if exist "venv\Scripts\activate.bat" (
+    echo Activating virtual environment...
+    call venv\Scripts\activate
+)
 
-REM Install/Update dependencies
-echo Installing dependencies...
-pip install -r requirements.txt --quiet
-
-echo.
-echo ========================================
-echo   Starting Cashper Backend API Server
-echo ========================================
-echo.
-echo Server will be available at:
-echo   - http://localhost:8000
-echo   - API Docs: http://localhost:8000/docs
-echo.
-echo Press Ctrl+C to stop the server
-echo ========================================
-echo.
-
-REM Start the server
-python -m uvicorn app:app --reload --host 0.0.0.0 --port 8000
+REM Start the server with correct host
+python -m uvicorn app:app --reload --host 127.0.0.1 --port 8000
 

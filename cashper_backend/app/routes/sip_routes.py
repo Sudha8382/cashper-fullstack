@@ -287,6 +287,24 @@ async def submit_application(request: SIPApplicationRequest, current_user: dict 
             applicationNumber=app_number,
             name=request.name,
             email=request.email,
+            phone=request.phone,
+            age=request.age,
+            panNumber=request.panNumber,
+            sipAmount=request.sipAmount,
+            sipFrequency=request.sipFrequency,
+            tenure=request.tenure,
+            investmentGoal=request.investmentGoal,
+            riskProfile=request.riskProfile,
+            address=request.address,
+            city=request.city,
+            state=request.state,
+            pincode=request.pincode,
+            documents={
+                "pan": request.panDocument,
+                "aadhaar": request.aadhaarDocument,
+                "photo": request.photoDocument,
+                "bankProof": request.bankProofDocument
+            },
             status=ApplicationStatus.SUBMITTED,
             submittedAt=datetime.utcnow(),
             message=f"Your SIP application has been submitted successfully! Your application number is {app_number}"
@@ -314,6 +332,22 @@ async def get_all_applications(skip: int = 0, limit: int = 100):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch applications: {str(e)}"
+        )
+
+@router.get("/application/user/{email}")
+async def get_user_applications(email: str):
+    """Get all applications for a specific user by email"""
+    try:
+        applications = repository.get_applications_by_email(email)
+        return {
+            "success": True,
+            "count": len(applications),
+            "applications": applications
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch user applications: {str(e)}"
         )
 
 @router.get("/application/{application_id}")

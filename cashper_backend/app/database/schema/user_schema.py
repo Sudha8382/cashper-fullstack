@@ -97,6 +97,7 @@ class UserResponse(BaseModel):
     email: str
     phone: str
     role: str = "user"
+    isAdmin: bool = False
     isEmailVerified: bool = False
     isPhoneVerified: bool = False
     createdAt: datetime

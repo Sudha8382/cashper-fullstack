@@ -237,6 +237,7 @@ class BusinessTaxPlanningApplicationResponse(BaseModel):
     numberOfEmployees: Optional[str] = None
     servicesRequired: Optional[List[str]] = None
     businessDetails: Optional[str] = None
+    userId: Optional[str] = None
     status: ConsultationStatus
     createdAt: datetime
     assignedTo: Optional[str] = None
@@ -259,6 +260,7 @@ class BusinessTaxPlanningApplicationInDB(BaseModel):
     numberOfEmployees: Optional[str] = None
     servicesRequired: Optional[List[str]] = None
     businessDetails: Optional[str] = None
+    userId: Optional[str] = None
     status: ConsultationStatus
     createdAt: datetime
     assignedTo: Optional[str] = None

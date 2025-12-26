@@ -342,6 +342,20 @@ async def submit_application(
             applicationNumber=app_number,
             name=name,
             email=email,
+            phone=phone,
+            age=age,
+            panNumber=panNumber,
+            investmentType=investmentType,
+            investmentAmount=investmentAmount,
+            investmentGoal=investmentGoal,
+            riskProfile=riskProfile,
+            sipAmount=sipAmount,
+            sipFrequency=sipFrequency,
+            address=address,
+            city=city,
+            state=state,
+            pincode=pincode,
+            documents=document_paths,
             status=ApplicationStatus.SUBMITTED,
             submittedAt=datetime.utcnow(),
             message=f"Application submitted successfully! Your application number is {app_number}"
@@ -370,6 +384,22 @@ async def get_all_applications(skip: int = 0, limit: int = 100):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch applications: {str(e)}"
+        )
+
+@router.get("/application/user/{email}")
+async def get_user_applications(email: str):
+    """Get all applications for a specific user by email"""
+    try:
+        applications = repository.get_applications_by_email(email)
+        return {
+            "success": True,
+            "count": len(applications),
+            "applications": applications
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch user applications: {str(e)}"
         )
 
 @router.get("/application/{application_id}")

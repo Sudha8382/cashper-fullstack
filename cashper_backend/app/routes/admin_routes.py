@@ -104,8 +104,8 @@ init_admin_password()
 
 def verify_admin(current_user: dict):
     """Verify if current user is admin"""
-    email = current_user.get("email", "").lower()
-    if email != ADMIN_EMAIL.lower():
+    is_admin = current_user.get("isAdmin", False)
+    if not is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied. Admin privileges required."
@@ -577,57 +577,98 @@ def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
             growth_percent = ((insurance_this_month - insurance_last_month) / insurance_last_month) * 100
             insurance_growth = f"{'+' if growth_percent >= 0 else ''}{growth_percent:.1f}%"
         
-        # 4. TOTAL REVENUE - Calculate from loans and insurance premiums
-        # Loan interest: 12% per annum on active loan amount
-        # Insurance: Average ₹15,000 per health, ₹12,000 per motor, ₹25,000 per term
-        loan_revenue = active_loan_amount * 0.12 / 12  # Monthly interest
-        insurance_revenue = (health_insurance * 15000 + motor_insurance * 12000 + term_insurance * 25000) / 12  # Monthly premium
-        total_revenue = loan_revenue + insurance_revenue
+        # 4. TOTAL INQUIRIES - Count ALL inquiries from database (real-time)
+        total_inquiries = 0
+        try:
+            # Loan inquiries (get-in-touch forms)
+            total_inquiries += db["short_term_loan_get_in_touch"].count_documents({}) if "short_term_loan_get_in_touch" in db.list_collection_names() else 0
+            total_inquiries += db["personal_loan_get_in_touch"].count_documents({}) if "personal_loan_get_in_touch" in db.list_collection_names() else 0
+            total_inquiries += db["business_loan_get_in_touch"].count_documents({}) if "business_loan_get_in_touch" in db.list_collection_names() else 0
+            total_inquiries += db["home_loan_get_in_touch"].count_documents({}) if "home_loan_get_in_touch" in db.list_collection_names() else 0
+            
+            # Insurance inquiries (already counted above but let's add them separately)
+            total_inquiries += health_insurance
+            total_inquiries += motor_insurance
+            total_inquiries += term_insurance
+            
+            # SIP/Investment inquiries
+            total_inquiries += db["sip_inquiries"].count_documents({}) if "sip_inquiries" in db.list_collection_names() else 0
+            total_inquiries += db["mutual_fund_inquiries"].count_documents({}) if "mutual_fund_inquiries" in db.list_collection_names() else 0
+            
+            # Consultation bookings
+            total_inquiries += db["consultations"].count_documents({}) if "consultations" in db.list_collection_names() else 0
+            
+            # Contact form submissions
+            total_inquiries += db["contact_submissions"].count_documents({}) if "contact_submissions" in db.list_collection_names() else 0
+            
+            # Retail service applications
+            total_inquiries += db["RetailServiceApplications"].count_documents({}) if "RetailServiceApplications" in db.list_collection_names() else 0
+        except Exception as e:
+            print(f"   Error counting inquiries: {e}")
         
-        # Calculate revenue growth
-        revenue_this_month = (
-            sum(float(loan.get("loanAmount", 0)) * 0.12 / 12 for loan in db["personal_loan_applications"].find({"status": "approved", "updatedAt": {"$gte": first_day_this_month}})) +
-            sum(float(loan.get("loanAmount", 0)) * 0.12 / 12 for loan in db["home_loan_applications"].find({"status": "approved", "updatedAt": {"$gte": first_day_this_month}})) +
-            insurance_this_month * 18000  # Average insurance premium
+        # Calculate inquiries growth
+        inquiries_this_month = 0
+        inquiries_last_month = 0
+        try:
+            inquiry_collections = [
+                "short_term_loan_get_in_touch", "personal_loan_get_in_touch",
+                "business_loan_get_in_touch", "home_loan_get_in_touch",
+                "sip_inquiries", "mutual_fund_inquiries",
+                "consultations", "contact_submissions", "RetailServiceApplications"
+            ]
+            
+            for collection_name in inquiry_collections:
+                if collection_name in db.list_collection_names():
+                    inquiries_this_month += db[collection_name].count_documents({"createdAt": {"$gte": first_day_this_month}})
+                    inquiries_last_month += db[collection_name].count_documents({"createdAt": {"$gte": first_day_last_month, "$lt": first_day_this_month}})
+            
+            # Add insurance inquiries monthly counts
+            inquiries_this_month += insurance_this_month
+            inquiries_last_month += insurance_last_month
+        except Exception as e:
+            print(f"   Error calculating inquiry growth: {e}")
+        
+        inquiries_growth = "+0%"
+        if inquiries_last_month > 0:
+            growth_percent = ((inquiries_this_month - inquiries_last_month) / inquiries_last_month) * 100
+            inquiries_growth = f"{'+' if growth_percent >= 0 else ''}{growth_percent:.1f}%"
+        
+        # Count total active loans for display
+        total_active_loans_count = (
+            db["personal_loan_applications"].count_documents({"status": {"$in": ["approved", "disbursed"]}}) +
+            db["home_loan_applications"].count_documents({"status": {"$in": ["approved", "disbursed"]}}) +
+            db["business_loan_applications"].count_documents({"status": {"$in": ["approved", "disbursed"]}})
         )
-        revenue_last_month = (
-            sum(float(loan.get("loanAmount", 0)) * 0.12 / 12 for loan in db["personal_loan_applications"].find({"status": "approved", "updatedAt": {"$gte": first_day_last_month, "$lt": first_day_this_month}})) +
-            sum(float(loan.get("loanAmount", 0)) * 0.12 / 12 for loan in db["home_loan_applications"].find({"status": "approved", "updatedAt": {"$gte": first_day_last_month, "$lt": first_day_this_month}})) +
-            insurance_last_month * 18000  # Average insurance premium
-        )
-        
-        revenue_growth = "+0%"
-        if revenue_last_month > 0:
-            growth_percent = ((revenue_this_month - revenue_last_month) / revenue_last_month) * 100
-            revenue_growth = f"{'+' if growth_percent >= 0 else ''}{growth_percent:.1f}%"
-        
-        # Format values for display
-        active_loans_str = f"₹{active_loan_amount/10000000:.1f}Cr" if active_loan_amount > 0 else "₹0Cr"
-        total_revenue_str = f"₹{total_revenue/10000000:.1f}Cr" if total_revenue > 0 else "₹0Cr"
+        if "short_term_loans" in db.list_collection_names():
+            total_active_loans_count += db["short_term_loans"].count_documents({"status": {"$in": ["approved", "disbursed"]}})
+        if "admin_loan_applications" in db.list_collection_names():
+            total_active_loans_count += db["admin_loan_applications"].count_documents({"status": {"$in": ["approved", "disbursed"]}})
         
         print(f"✅ Dashboard Stats Updated:")
         print(f"   - Total Users: {total_users} ({user_growth})")
-        print(f"   - Active Loans: {active_loans_str} ({loan_growth})")
+        print(f"   - Active Loans (Count): {total_active_loans_count} ({loan_growth})")
         print(f"   - Insurance Policies: {total_insurance_policies} ({insurance_growth})")
-        print(f"   - Total Revenue: {total_revenue_str} ({revenue_growth})")
+        print(f"   - Total Inquiries: {total_inquiries} ({inquiries_growth})")
         
         return {
             "totalUsers": total_users,
             "total_users": total_users,
-            "activeLoans": active_loans_str,
-            "active_loans": active_loans_str,
+            "activeLoans": str(total_active_loans_count),
+            "activeLoansCount": total_active_loans_count,
+            "active_loans": str(total_active_loans_count),
+            "active_loans_count": total_active_loans_count,
             "insurancePolicies": total_insurance_policies,
             "insurance_policies": total_insurance_policies,
-            "totalRevenue": total_revenue_str,
-            "total_revenue": total_revenue_str,
+            "totalInquiries": total_inquiries,
+            "total_inquiries": total_inquiries,
             "totalUsersChange": user_growth,
             "user_growth": user_growth,
             "activeLoansChange": loan_growth,
             "loan_growth": loan_growth,
             "insurancePoliciesChange": insurance_growth,
             "insurance_growth": insurance_growth,
-            "totalRevenueChange": revenue_growth,
-            "revenue_growth": revenue_growth,
+            "totalInquiriesChange": inquiries_growth,
+            "inquiries_growth": inquiries_growth,
             "timestamp": datetime.utcnow().isoformat()
         }
         
@@ -639,6 +680,106 @@ def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch dashboard stats: {str(e)}"
         )
+
+
+@router.get("/dashboard/service-stats")
+def get_service_stats(current_user: dict = Depends(get_current_user)):
+    """
+    Get service statistics for dashboard cards
+    Returns real-time counts from database for:
+    - Investments
+    - Tax Planning
+    - Retail Services
+    - Corporate Services
+    """
+    verify_admin(current_user)
+    
+    try:
+        from app.database.db import get_database
+        db = get_database()
+        
+        # 1. INVESTMENTS - Only count actual investment applications (NOT inquiries)
+        total_investments = 0
+        try:
+            total_investments += db["sip_applications"].count_documents({}) if "sip_applications" in db.list_collection_names() else 0
+            total_investments += db["mutual_fund_applications"].count_documents({}) if "mutual_fund_applications" in db.list_collection_names() else 0
+            total_investments += db["investment_applications"].count_documents({}) if "investment_applications" in db.list_collection_names() else 0
+        except Exception as e:
+            print(f"   Error counting investments: {e}")
+        
+        # 2. TAX PLANNING - Count from tax application collections
+        total_tax_planning = 0
+        try:
+            total_tax_planning += db["personal_tax_applications"].count_documents({}) if "personal_tax_applications" in db.list_collection_names() else 0
+            total_tax_planning += db["business_tax_applications"].count_documents({}) if "business_tax_applications" in db.list_collection_names() else 0
+            total_tax_planning += db["itr_applications"].count_documents({}) if "itr_applications" in db.list_collection_names() else 0
+            total_tax_planning += db["personal_tax_consultations"].count_documents({}) if "personal_tax_consultations" in db.list_collection_names() else 0
+            total_tax_planning += db["business_tax_consultations"].count_documents({}) if "business_tax_consultations" in db.list_collection_names() else 0
+        except Exception as e:
+            print(f"   Error counting tax planning: {e}")
+        
+        # 3. RETAIL SERVICES - Count from retail service applications
+        total_retail_services = 0
+        try:
+            total_retail_services += db["RetailServiceApplications"].count_documents({}) if "RetailServiceApplications" in db.list_collection_names() else 0
+            total_retail_services += db["retail_service_applications"].count_documents({}) if "retail_service_applications" in db.list_collection_names() else 0
+            total_retail_services += db["aadhar_applications"].count_documents({}) if "aadhar_applications" in db.list_collection_names() else 0
+            total_retail_services += db["pan_applications"].count_documents({}) if "pan_applications" in db.list_collection_names() else 0
+            total_retail_services += db["passport_applications"].count_documents({}) if "passport_applications" in db.list_collection_names() else 0
+            total_retail_services += db["driving_license_applications"].count_documents({}) if "driving_license_applications" in db.list_collection_names() else 0
+            total_retail_services += db["voter_id_applications"].count_documents({}) if "voter_id_applications" in db.list_collection_names() else 0
+            total_retail_services += db["ration_card_applications"].count_documents({}) if "ration_card_applications" in db.list_collection_names() else 0
+        except Exception as e:
+            print(f"   Error counting retail services: {e}")
+        
+        # 4. CORPORATE SERVICES - Count from all business service collections  
+        total_corporate_services = 0
+        try:
+            # Business service applications
+            total_corporate_services += db["tds_services_applications"].count_documents({}) if "tds_services_applications" in db.list_collection_names() else 0
+            total_corporate_services += db["gst_services_applications"].count_documents({}) if "gst_services_applications" in db.list_collection_names() else 0
+            total_corporate_services += db["legal_advice_applications"].count_documents({}) if "legal_advice_applications" in db.list_collection_names() else 0
+            total_corporate_services += db["provident_fund_services_applications"].count_documents({}) if "provident_fund_services_applications" in db.list_collection_names() else 0
+            total_corporate_services += db["payroll_services_applications"].count_documents({}) if "payroll_services_applications" in db.list_collection_names() else 0
+            total_corporate_services += db["accounting_bookkeeping_applications"].count_documents({}) if "accounting_bookkeeping_applications" in db.list_collection_names() else 0
+            total_corporate_services += db["company_registration_applications"].count_documents({}) if "company_registration_applications" in db.list_collection_names() else 0
+            total_corporate_services += db["company_compliance_applications"].count_documents({}) if "company_compliance_applications" in db.list_collection_names() else 0
+            total_corporate_services += db["tax_audit_applications"].count_documents({}) if "tax_audit_applications" in db.list_collection_names() else 0
+            total_corporate_services += db["pf_services_applications"].count_documents({}) if "pf_services_applications" in db.list_collection_names() else 0
+            total_corporate_services += db["company_incorporation_applications"].count_documents({}) if "company_incorporation_applications" in db.list_collection_names() else 0
+            total_corporate_services += db["trademark_registration_applications"].count_documents({}) if "trademark_registration_applications" in db.list_collection_names() else 0
+            total_corporate_services += db["CorporateServiceInquiries"].count_documents({}) if "CorporateServiceInquiries" in db.list_collection_names() else 0
+            total_corporate_services += db["corporate_service_inquiries"].count_documents({}) if "corporate_service_inquiries" in db.list_collection_names() else 0
+            total_corporate_services += db["corporate_consultations"].count_documents({}) if "corporate_consultations" in db.list_collection_names() else 0
+        except Exception as e:
+            print(f"   Error counting corporate services: {e}")
+        
+        print(f"✅ Service Stats (Real-time from DB):")
+        print(f"   - Investments: {total_investments}")
+        print(f"   - Tax Planning: {total_tax_planning}")
+        print(f"   - Retail Services: {total_retail_services}")
+        print(f"   - Corporate Services: {total_corporate_services}")
+        
+        return {
+            "investments": total_investments,
+            "taxPlanning": total_tax_planning,
+            "retailServices": total_retail_services,
+            "corporateServices": total_corporate_services,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"❌ Error fetching service stats: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        # Return zeros on error
+        return {
+            "investments": 0,
+            "taxPlanning": 0,
+            "retailServices": 0,
+            "corporateServices": 0,
+            "timestamp": datetime.utcnow().isoformat()
+        }
 
 
 @router.get("/dashboard/activities")

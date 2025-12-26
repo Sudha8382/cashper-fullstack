@@ -253,6 +253,7 @@ class PersonalTaxRepository:
             employmentType=application_dict["employmentType"],
             preferredTaxRegime=application_dict.get("preferredTaxRegime"),
             additionalInfo=application_dict.get("additionalInfo"),
+            userId=application_dict.get("userId"),
             status=ConsultationStatus(application_dict["status"]),
             createdAt=application_dict["createdAt"],
             assignedTo=application_dict.get("assignedTo"),
@@ -319,6 +320,15 @@ class PersonalTaxRepository:
             query["assignedTo"] = assigned_to
         
         return collection.count_documents(query)
+
+    def get_applications_by_email(self, email: str) -> List[dict]:
+        """Get all tax planning applications for a specific user by email"""
+        collection = self.get_application_collection()
+        applications = list(
+            collection.find({"emailAddress": email.lower()})
+            .sort("createdAt", -1)
+        )
+        return applications
 
     def update_application_status(
         self, 

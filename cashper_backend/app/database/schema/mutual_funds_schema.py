@@ -139,8 +139,37 @@ class MutualFundApplicationRequest(BaseModel):
 class MutualFundApplicationResponse(BaseModel):
     id: str
     applicationNumber: str
+    
+    # Personal Information
     name: str
     email: str
+    phone: str
+    age: int
+    panNumber: str
+    
+    # Investment Details
+    investmentType: str
+    investmentAmount: float
+    investmentGoal: str
+    riskProfile: str
+    sipAmount: Optional[float] = None
+    sipFrequency: Optional[str] = None
+    
+    # Address & KYC
+    address: str
+    city: str
+    state: str
+    pincode: str
+    
+    # Documents
+    documents: Dict[str, Optional[str]] = {
+        "pan": None,
+        "aadhaar": None,
+        "photo": None,
+        "bankProof": None
+    }
+    
+    # Status & Tracking
     status: str
     submittedAt: datetime
     message: str = "Your application has been submitted successfully!"

@@ -220,6 +220,7 @@ class PersonalTaxPlanningApplicationResponse(BaseModel):
     employmentType: str
     preferredTaxRegime: Optional[str] = None
     additionalInfo: Optional[str] = None
+    userId: Optional[str] = None
     status: ConsultationStatus
     createdAt: datetime
     assignedTo: Optional[str] = None
@@ -239,6 +240,7 @@ class PersonalTaxPlanningApplicationInDB(BaseModel):
     employmentType: str
     preferredTaxRegime: Optional[str] = None
     additionalInfo: Optional[str] = None
+    userId: Optional[str] = None
     status: ConsultationStatus = ConsultationStatus.PENDING
     createdAt: datetime = Field(default_factory=datetime.utcnow)
     assignedTo: Optional[str] = None

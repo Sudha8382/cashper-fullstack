@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Form, UploadFile, File
+from fastapi import APIRouter, HTTPException, status, Form, UploadFile, File, Depends
 from app.database.schema.health_insurance_schema import (
     HealthInsuranceInquiryRequest,
     HealthInsuranceInquiryResponse,
@@ -17,6 +17,9 @@ from app.database.schema.insurance_policy_schema import (
 )
 from app.database.repository.health_insurance_repository import health_insurance_repository
 from app.database.repository.insurance_management_repository import insurance_management_repository
+from app.database.db import get_database
+from app.utils.auth_middleware import get_current_user
+from app.utils.auth import get_optional_user
 from datetime import datetime, timedelta
 from typing import List, Optional
 import os
@@ -148,7 +151,8 @@ def submit_application(
     pan: Optional[UploadFile] = File(None),
     photo: Optional[UploadFile] = File(None),
     medicalReports: Optional[UploadFile] = File(None),
-    addressProof: Optional[UploadFile] = File(None)
+    addressProof: Optional[UploadFile] = File(None),
+    current_user: Optional[dict] = Depends(get_optional_user)
 ):
     """
     Submit a health insurance application with file uploads.
@@ -213,6 +217,7 @@ def submit_application(
         
         # Create application in database
         application_data = HealthInsuranceApplicationInDB(
+            userId=str(current_user["_id"]),
             applicationNumber=app_number,
             name=name,
             email=email,
@@ -262,15 +267,24 @@ def submit_application(
         except Exception as policy_error:
             print(f"Warning: Failed to create policy entry: {str(policy_error)}")
         
-        # Prepare response
+        # Prepare response with all fields
         response = HealthInsuranceApplicationResponse(
             id=application_id,
             applicationNumber=app_number,
+            userId=str(current_user["_id"]) if current_user else None,
             name=name,
             email=email,
             phone=phone,
+            age=age,
+            gender=gender,
+            familySize=familySize,
             coverageAmount=coverageAmount,
             policyType=policyType,
+            existingConditions=existingConditions,
+            address=address,
+            city=city,
+            state=state,
+            pincode=pincode,
             status=ApplicationStatus.submitted,
             submittedAt=datetime.now(),
             message=f"Your health insurance application has been submitted successfully! Your application number is {app_number}",
@@ -289,14 +303,59 @@ def submit_application(
         )
 
 @router.get("/application/all", response_model=List[dict])
-def get_all_applications(skip: int = 0, limit: int = 100):
+def get_all_applications(
+    skip: int = 0,
+    limit: int = 100,
+    current_user: Optional[dict] = Depends(get_optional_user)
+):
     """
-    Get all health insurance applications (Admin endpoint).
+    Get health insurance applications (User sees own, Admin sees all).
     """
     try:
-        applications = health_insurance_repository.get_all_applications(skip, limit)
+        # If no user logged in, return empty list
+        if not current_user:
+            print("⚠️ No current user - returning empty list")
+            return []
+        
+        print(f"✓ Current user: {current_user.get('_id')}, Email: {current_user.get('email')}")
+        
+        # Check if user is admin
+        is_admin = current_user.get("isAdmin", False)
+        print(f"Admin check: is_admin = {is_admin}")
+        
+        if is_admin:
+            # Admin can see all applications
+            print("👨‍💼 Admin user - fetching all applications")
+            applications = health_insurance_repository.get_all_applications(skip, limit)
+        else:
+            # Regular user sees only their own applications
+            print("👤 Regular user - fetching user-specific applications")
+            db = get_database()
+            user_id_str = str(current_user["_id"])
+            print(f"📝 Searching for applications with userId: {user_id_str}")
+            
+            applications = list(
+                db["health_insurance_applications"]
+                .find({"userId": user_id_str})
+                .sort("submittedAt", -1)
+                .skip(skip)
+                .limit(limit)
+            )
+            
+            print(f"✓ Found {len(applications)} applications for user")
+            
+            # Convert ObjectId to string for JSON serialization
+            for application in applications:
+                application["_id"] = str(application["_id"])
+                if "userId" in application and hasattr(application["userId"], '__str__'):
+                    application["userId"] = str(application["userId"])
+        
+        print(f"📤 Returning {len(applications)} applications")
         return applications
     except Exception as e:
+        print(f"❌ Error in get_all_applications: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch applications: {str(e)}"

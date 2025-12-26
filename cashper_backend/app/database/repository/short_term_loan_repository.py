@@ -108,7 +108,8 @@ class ShortTermLoanApplicationRepository:
     def get_by_user_id(cls, user_id: str) -> List[dict]:
         """Get applications by user ID"""
         collection = cls.get_collection()
-        applications = list(collection.find({"user_id": user_id}).sort("created_at", -1))
+        # Use userId (camelCase) to match database field
+        applications = list(collection.find({"userId": user_id}).sort("created_at", -1))
         for app in applications:
             app["_id"] = str(app["_id"])
         return applications

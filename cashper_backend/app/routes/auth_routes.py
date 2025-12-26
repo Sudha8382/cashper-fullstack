@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends, Response, File, UploadFile, Form
+from fastapi import APIRouter, HTTPException, status, Depends, Response, File, UploadFile, Form, BackgroundTasks
 from pydantic import BaseModel, Field
 from typing import Optional
 from app.database.schema.user_schema import (
@@ -20,6 +20,7 @@ from app.database.repository.user_repository import user_repository
 from app.utils.security import hash_password, verify_password, create_access_token
 from app.utils.auth_middleware import get_current_user
 from app.utils.file_upload import save_upload_file
+from app.utils.email_service import send_otp_email, send_welcome_email
 from datetime import datetime, timedelta
 import random
 import re
@@ -27,6 +28,7 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 import os
 from bson import ObjectId
+import asyncio
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -192,6 +194,7 @@ def login_user(login_data: UserLoginRequest):
         email=user["email"],
         phone=user["phone"],
         role=user.get("role", "user"),
+        isAdmin=user.get("isAdmin", False),
         isEmailVerified=user.get("isEmailVerified", False),
         isPhoneVerified=user.get("isPhoneVerified", False),
         createdAt=user["createdAt"],
@@ -208,59 +211,157 @@ def login_user(login_data: UserLoginRequest):
 @router.post("/google-login", response_model=TokenResponse, status_code=status.HTTP_200_OK)
 def google_login(request: GoogleLoginRequest):
     """
-    Login with Google OAuth
+    Google OAuth Login/Registration
     
-    Validates Google token and creates/logs in user
+    This endpoint handles Google OAuth authentication with the following flow:
+    1. Validates the Google ID token from the client
+    2. Extracts user information from the verified token
+    3. Checks if user exists in database (by email)
+    4. If exists: Updates Google ID and auth provider if not already set
+    5. If new: Creates a new user account with Google OAuth data
+    6. Generates and returns JWT access token with user information
+    
+    Args:
+        request (GoogleLoginRequest): Contains the Google ID token
+        
+    Returns:
+        TokenResponse: JWT access token and user information
+        
+    Raises:
+        HTTPException 401: Invalid or expired Google token
+        HTTPException 500: Database or server errors
     """
     try:
-        # Verify Google token
-        idinfo = id_token.verify_oauth2_token(
-            request.token, 
-            google_requests.Request(), 
-            GOOGLE_CLIENT_ID
-        )
+        # Validate that token is provided
+        if not request.token or not request.token.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Google token is required"
+            )
         
-        # Get user info from Google
-        google_id = idinfo['sub']
-        email = idinfo['email'].lower()
-        full_name = idinfo.get('name', email.split('@')[0])
+        # Verify Google token with Google's servers
+        try:
+            idinfo = id_token.verify_oauth2_token(
+                request.token, 
+                google_requests.Request(), 
+                GOOGLE_CLIENT_ID
+            )
+        except ValueError as ve:
+            # Token verification failed (expired, invalid signature, wrong audience, etc.)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired Google token. Please sign in again."
+            )
+        except Exception as ve:
+            # Other token verification errors
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Failed to verify Google token. Please try again."
+            )
+        
+        # Extract user information from verified Google token
+        google_id = idinfo.get('sub')
+        email = idinfo.get('email')
+        full_name = idinfo.get('name')
         email_verified = idinfo.get('email_verified', False)
         
-        # Check if user exists
+        # Validate required fields from Google
+        if not google_id or not email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid Google token: missing required user information"
+            )
+        
+        # Normalize email to lowercase for consistency
+        email = email.lower()
+        
+        # Use email username as fallback if name not provided
+        if not full_name:
+            full_name = email.split('@')[0].title()
+        
+        # Check if user already exists in database
         user = user_repository.get_user_by_email(email)
         
         if user:
-            # Update Google ID if not set
+            # Block admin users from logging in with Google
+            if user.get('isAdmin') or user.get('role') == 'admin':
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Admin users cannot login with Google. Please use email and password."
+                )
+            
+            # Existing user - update Google credentials if not already set
+            update_fields = {}
+            
             if not user.get('googleId'):
+                update_fields['googleId'] = google_id
+                
+            if not user.get('authProvider') or user.get('authProvider') != 'google':
+                update_fields['authProvider'] = 'google'
+            
+            # Update email verification status if Google confirms it
+            if email_verified and not user.get('isEmailVerified'):
+                update_fields['isEmailVerified'] = True
+            
+            # Perform update if there are changes
+            if update_fields:
+                update_fields['updatedAt'] = datetime.utcnow()
                 collection = user_repository.get_collection()
                 collection.update_one(
                     {"_id": user["_id"]},
-                    {"$set": {"googleId": google_id, "authProvider": "google", "updatedAt": datetime.utcnow()}}
+                    {"$set": update_fields}
                 )
+                # Refresh user data after update
+                user = user_repository.get_user_by_id(str(user["_id"]))
+                
         else:
-            # Create new user with Google auth
+            # New user - create account with Google OAuth data
             new_user_data = {
                 "fullName": full_name,
                 "email": email,
-                "phone": "",  # Phone optional for Google users
+                "phone": "",  # Phone is optional for Google OAuth users
                 "googleId": google_id,
                 "authProvider": "google",
                 "isEmailVerified": email_verified,
                 "isPhoneVerified": False,
                 "isActive": True,
-                "agreeToTerms": True,  # Implicit agreement via Google OAuth
+                "agreeToTerms": True,  # Implicit agreement through Google OAuth
                 "createdAt": datetime.utcnow(),
                 "updatedAt": None
             }
             
-            collection = user_repository.get_collection()
-            result = collection.insert_one(new_user_data)
-            user = user_repository.get_user_by_id(str(result.inserted_id))
+            try:
+                collection = user_repository.get_collection()
+                result = collection.insert_one(new_user_data)
+                user = user_repository.get_user_by_id(str(result.inserted_id))
+                
+                if not user:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Failed to create user account. Please try again."
+                    )
+            except Exception as db_error:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Database error during user creation: {str(db_error)}"
+                )
         
-        # Create access token
-        access_token = create_access_token(data={"sub": str(user["_id"]), "email": user["email"]})
+        # Check if account is active
+        if not user.get('isActive', True):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your account has been deactivated. Please contact support."
+            )
         
-        # Convert user to response format
+        # Generate JWT access token for the user
+        access_token = create_access_token(
+            data={
+                "sub": str(user["_id"]),
+                "email": user["email"]
+            }
+        )
+        
+        # Convert database user to response format
         user_response = UserResponse(
             id=str(user["_id"]),
             fullName=user["fullName"],
@@ -272,22 +373,22 @@ def google_login(request: GoogleLoginRequest):
             updatedAt=user.get("updatedAt")
         )
         
+        # Return token and user information
         return TokenResponse(
             access_token=access_token,
             token_type="bearer",
             user=user_response
         )
         
-    except ValueError as e:
-        # Invalid token
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid Google token: {str(e)}"
-        )
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+        
     except Exception as e:
+        # Catch-all for unexpected errors
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Google authentication failed: {str(e)}"
+            detail=f"An unexpected error occurred during Google authentication: {str(e)}"
         )
 
 
@@ -394,17 +495,46 @@ def verify_phone(user_id: str):
 
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
-def forgot_password(request: ForgotPasswordRequest):
+async def forgot_password(request: ForgotPasswordRequest, background_tasks: BackgroundTasks):
     """
     Send OTP to email for password reset
     """
     email_lower = request.email.lower()
     
+    # Validate Gmail credentials first
+    gmail_user = os.getenv("GMAIL_USER")
+    gmail_password = os.getenv("GMAIL_APP_PASSWORD")
+    
+    if not gmail_user or not gmail_password or gmail_user == "your-email@gmail.com" or gmail_password == "your-app-password-here":
+        print(f"\n{'='*60}")
+        print(f"❌ GMAIL CONFIGURATION ERROR")
+        print(f"{'='*60}")
+        print(f"Gmail credentials not properly configured in .env file")
+        print(f"Current GMAIL_USER: {gmail_user}")
+        print(f"Current GMAIL_APP_PASSWORD: {'SET' if gmail_password else 'NOT SET'}")
+        print(f"\n📖 SETUP INSTRUCTIONS:")
+        print(f"1. Go to: https://myaccount.google.com/apppasswords")
+        print(f"2. Enable 2-Step Verification if not enabled")
+        print(f"3. Create an App Password for 'Mail' application")
+        print(f"4. Update cashper_backend\\.env file:")
+        print(f"   GMAIL_USER=your-actual-email@gmail.com")
+        print(f"   GMAIL_APP_PASSWORD=your-16-digit-app-password")
+        print(f"5. Restart the backend server")
+        print(f"{'='*60}\n")
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Email service not configured. Please contact administrator."
+        )
+    
     # Check if user exists
     user = user_repository.get_user_by_email(email_lower)
     if not user:
         # Don't reveal if email exists or not (security)
-        return {"message": "If the email exists, an OTP has been sent"}
+        return {
+            "message": "If the email exists, an OTP has been sent",
+            "success": True
+        }
     
     # Generate 6-digit OTP
     otp = str(random.randint(100000, 999999))
@@ -416,15 +546,37 @@ def forgot_password(request: ForgotPasswordRequest):
         "type": "password_reset"
     }
     
-    # In production: Send OTP via email service (SendGrid, AWS SES, etc.)
+    # Print OTP in console for development
     print(f"\n{'='*50}")
     print(f"PASSWORD RESET OTP for {email_lower}: {otp}")
     print(f"Valid for 5 minutes")
     print(f"{'='*50}\n")
     
+    # Get user name for email personalization
+    user_name = user.get("fullName", "User")
+    
+    # Try to send email synchronously first to validate it works
+    try:
+        email_sent = await send_otp_email(request.email, otp, user_name)
+        
+        if not email_sent:
+            print(f"⚠️  WARNING: Failed to send OTP email to {request.email}")
+            print(f"   But OTP is stored and valid: {otp}")
+            # Still return success because OTP is generated and stored
+            # User can use OTP from console logs
+        else:
+            print(f"✅ OTP email sent successfully to {request.email}")
+            
+    except Exception as e:
+        print(f"❌ Error sending OTP email: {str(e)}")
+        print(f"   But OTP is stored and valid: {otp}")
+        # Continue anyway - OTP is still valid from console
+    
+    # Return success
     return {
-        "message": "If the email exists, an OTP has been sent",
-        "dev_otp": otp  # Remove in production!
+        "message": "OTP has been sent to your email address. Please check your inbox and spam folder.",
+        "success": True,
+        "otp_expiry_minutes": 5
     }
 
 

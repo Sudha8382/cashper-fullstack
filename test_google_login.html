@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Google Login</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .info {
+            background: #e8f5e9;
+            border: 1px solid #4caf50;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            word-break: break-all;
+        }
+        .success {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+            color: #065f46;
+        }
+        .error {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+        }
+        #googleButton {
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔐 Test Google OAuth Login</h2>
+        <div class="info">
+            <strong>Testing Google Login Integration</strong><br>
+            Client ID: 1083344973828-prn7946r1unojpts72snd9cq780tj6c5.apps.googleusercontent.com
+        </div>
+        
+        <div id="googleButton"></div>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // Initialize Google Sign-In
+        function handleCredentialResponse(response) {
+            const resultDiv = document.getElementById('result');
+            console.log("Encoded JWT ID token: " + response.credential);
+            
+            resultDiv.innerHTML = '<div class="info">Testing API call...</div>';
+            
+            // Test the backend API
+            testBackendAPI(response.credential);
+        }
+        
+        async function testBackendAPI(token) {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/auth/google-login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ token: token })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <strong>✅ Google Login Successful!</strong><br><br>
+                            <strong>User:</strong> ${data.user.fullName}<br>
+                            <strong>Email:</strong> ${data.user.email}<br>
+                            <strong>Auth Provider:</strong> ${data.user.authProvider}<br>
+                            <strong>Token Type:</strong> ${data.token_type}<br><br>
+                            <strong>Access Token:</strong><br>
+                            <code style="font-size: 10px; word-break: break-all;">${data.access_token.substring(0, 50)}...</code>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <strong>❌ Login Failed!</strong><br><br>
+                            <strong>Status:</strong> ${response.status}<br>
+                            <strong>Error:</strong> ${data.detail || JSON.stringify(data)}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <strong>❌ Error!</strong><br><br>
+                        ${error.message}<br><br>
+                        Make sure backend server is running on http://localhost:8000
+                    </div>
+                `;
+            }
+        }
+        
+        window.onload = function () {
+            google.accounts.id.initialize({
+                client_id: '1083344973828-prn7946r1unojpts72snd9cq780tj6c5.apps.googleusercontent.com',
+                callback: handleCredentialResponse
+            });
+            google.accounts.id.renderButton(
+                document.getElementById('googleButton'),
+                { 
+                    theme: 'outline', 
+                    size: 'large',
+                    text: 'signin_with',
+                    width: 400
+                }
+            );
+        };
+    </script>
+</body>
+</html>

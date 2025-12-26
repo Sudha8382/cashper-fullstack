@@ -169,6 +169,62 @@ def get_current_user_optional(credentials: Optional[HTTPAuthorizationCredentials
     except Exception as e:
         raise credentials_exception
 
+def get_optional_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Optional[dict]:
+    """Get current user if authenticated, otherwise return None (no error raised)"""
+    if not credentials:
+        return None
+    
+    try:
+        token = credentials.credentials
+        payload = decode_access_token(token)
+        
+        if payload is None:
+            return None
+        
+        user_id: str = payload.get("sub")
+        email: str = payload.get("email")
+        is_admin: bool = payload.get("isAdmin", False)
+        
+        if user_id is None:
+            return None
+        
+        # Handle admin user
+        if is_admin and user_id == "admin_user":
+            from datetime import datetime
+            return {
+                "_id": "admin_user",
+                "email": email,
+                "fullName": "Admin",
+                "phone": "",
+                "isAdmin": True,
+                "isActive": True,
+                "isEmailVerified": True,
+                "isPhoneVerified": False,
+                "profileImage": None,
+                "address": None,
+                "panCard": None,
+                "aadhar": None,
+                "dateOfBirth": None,
+                "occupation": "Administrator",
+                "annualIncome": None,
+                "authProvider": "admin",
+                "createdAt": datetime.utcnow(),
+                "updatedAt": datetime.utcnow()
+            }
+        
+        user = user_repository.get_user_by_id(user_id)
+        
+        if user is None:
+            return None
+        
+        if not user.get("isActive", False):
+            return None
+        
+        return user
+        
+    except Exception as e:
+        return None
+
 def verify_admin_token(current_user: dict = Depends(get_current_user)) -> dict:
     if current_user.get("role") != "admin" and not current_user.get("isAdmin"):
         raise HTTPException(

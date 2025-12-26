@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Form, UploadFile, File
+from fastapi import APIRouter, HTTPException, status, Form, UploadFile, File, Depends
 from app.database.schema.motor_insurance_schema import (
     MotorInsuranceInquiryRequest,
     MotorInsuranceInquiryResponse,
@@ -17,6 +17,9 @@ from app.database.schema.insurance_policy_schema import (
 )
 from app.database.repository.motor_insurance_repository import motor_insurance_repository
 from app.database.repository.insurance_management_repository import insurance_management_repository
+from app.utils.auth_middleware import get_current_user
+from app.utils.auth import get_optional_user
+from app.database.db import get_database
 from datetime import datetime, timedelta
 from typing import List, Optional
 import os
@@ -149,7 +152,8 @@ def submit_application(
     dl: Optional[UploadFile] = File(None),
     vehiclePhotos: Optional[UploadFile] = File(None),
     previousPolicy: Optional[UploadFile] = File(None),
-    addressProof: Optional[UploadFile] = File(None)
+    addressProof: Optional[UploadFile] = File(None),
+    current_user: Optional[dict] = Depends(get_optional_user)
 ):
     """
     Submit a motor insurance application with file uploads.
@@ -197,6 +201,7 @@ def submit_application(
         
         # Create application in database
         application_data = MotorInsuranceApplicationInDB(
+            userId=str(current_user["_id"]),
             applicationNumber=app_number,
             name=name,
             email=email,
@@ -247,16 +252,25 @@ def submit_application(
         except Exception as policy_error:
             print(f"Warning: Failed to create policy entry: {str(policy_error)}")
         
-        # Prepare response
+        # Prepare response with all fields
         response = MotorInsuranceApplicationResponse(
             id=application_id,
+            userId=str(current_user["_id"]) if current_user else None,
             applicationNumber=app_number,
             name=name,
             email=email,
             phone=phone,
+            age=age,
             vehicleType=vehicleType,
             registrationNumber=registrationNumber,
+            makeModel=makeModel,
+            manufacturingYear=manufacturingYear,
+            vehicleValue=vehicleValue,
             policyType=policyType,
+            address=address,
+            city=city,
+            state=state,
+            pincode=pincode,
             status=ApplicationStatus.submitted,
             submittedAt=datetime.now(),
             message=f"Your motor insurance application has been submitted successfully! Your application number is {app_number}",
@@ -275,14 +289,49 @@ def submit_application(
         )
 
 @router.get("/application/all", response_model=List[dict])
-def get_all_applications(skip: int = 0, limit: int = 100):
+def get_all_applications(skip: int = 0, limit: int = 100, current_user: Optional[dict] = Depends(get_optional_user)):
     """
-    Get all motor insurance applications (Admin endpoint).
+    Get motor insurance applications filtered by user.
+    Admin sees all, regular users see only their own.
     """
     try:
-        applications = motor_insurance_repository.get_all_applications(skip, limit)
+        db = get_database()
+        
+        # If no user is logged in, return empty list
+        if not current_user:
+            print("⚠️ No current user in motor insurance - returning empty list")
+            return []
+        
+        print(f"✓ Motor Insurance - Current user: {current_user.get('_id')}")
+        
+        # Check if user is admin
+        is_admin = current_user.get("isAdmin", False)
+        print(f"Admin check: is_admin = {is_admin}")
+        
+        if is_admin:
+            # Admin can see all applications
+            print("👨‍💼 Admin user - fetching all motor applications")
+            applications = motor_insurance_repository.get_all_applications(skip, limit)
+        else:
+            # Regular users see only their own applications
+            user_id = str(current_user["_id"])
+            print(f"📝 Searching motor applications for userId: {user_id}")
+            collection = db["motor_insurance_applications"]
+            applications = list(collection.find({"userId": user_id}).skip(skip).limit(limit))
+            print(f"✓ Found {len(applications)} motor applications for user")
+            
+            # Convert ObjectId to string for JSON serialization
+            for app in applications:
+                app["_id"] = str(app["_id"])
+                if "userId" in app:
+                    app["userId"] = str(app["userId"])
+        
+        print(f"📤 Returning {len(applications)} motor applications")
         return applications
     except Exception as e:
+        print(f"❌ Error in motor insurance GET: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch applications: {str(e)}"

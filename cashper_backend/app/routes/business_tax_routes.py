@@ -16,6 +16,7 @@ from app.database.schema.business_tax_schema import (
 )
 from app.database.repository.business_tax_repository import business_tax_repository
 from app.utils.auth_middleware import get_current_user_optional
+from app.utils.auth import get_current_user, get_optional_user
 from datetime import datetime
 
 router = APIRouter(prefix="/api/business-tax", tags=["Business Tax Planning"])
@@ -258,7 +259,10 @@ def calculate_business_tax_savings(calculation: BusinessTaxCalculatorRequest):
 
 
 @router.post("/application/submit", response_model=BusinessTaxPlanningApplicationResponse, status_code=status.HTTP_201_CREATED)
-def submit_business_tax_planning_application(application: BusinessTaxPlanningApplicationRequest):
+def submit_business_tax_planning_application(
+    application: BusinessTaxPlanningApplicationRequest,
+    current_user: Optional[dict] = Depends(get_optional_user)
+):
     """
     Submit application for business tax planning service (PUBLIC - No authentication required)
     
@@ -305,6 +309,7 @@ def submit_business_tax_planning_application(application: BusinessTaxPlanningApp
             numberOfEmployees=application.numberOfEmployees if application.numberOfEmployees else None,
             servicesRequired=application.servicesRequired,
             businessDetails=application.businessDetails,
+            userId=str(current_user["_id"]) if current_user else None,
             status=ConsultationStatus.PENDING,
             createdAt=datetime.utcnow()
         )
@@ -539,18 +544,48 @@ def get_calculation_by_id(
 def get_all_applications(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-    status: Optional[str] = Query(None, description="Filter by status"),
+    status_filter: Optional[str] = Query(None, description="Filter by status"),
     assigned_to: Optional[str] = Query(None, description="Filter by assigned consultant"),
-    current_user: dict = Depends(get_current_user_optional)
+    current_user: Optional[dict] = Depends(get_optional_user)
 ):
-    """Get all business tax planning applications (ADMIN ONLY)"""
+    """Get all business tax planning applications (User sees own, Admin sees all)"""
     try:
-        applications = business_tax_repository.get_all_applications(
-            skip=skip,
-            limit=limit,
-            status=status,
-            assigned_to=assigned_to
-        )
+        # If no user logged in, return empty list
+        if not current_user:
+            return []
+        
+        # Check if user is admin
+        is_admin = current_user.get("isAdmin", False)
+        
+        if is_admin:
+            # Admin can see all applications
+            applications = business_tax_repository.get_all_applications(
+                skip=skip,
+                limit=limit,
+                status=status_filter,
+                assigned_to=assigned_to
+            )
+        else:
+            # Regular user sees only their own applications
+            from app.database.db import get_database
+            db = get_database()
+            user_id_str = str(current_user["_id"])
+            
+            # Build query
+            query = {"userId": user_id_str}
+            if status_filter:
+                query["status"] = status_filter
+            if assigned_to:
+                query["assignedTo"] = assigned_to
+            
+            # Fetch user's applications
+            applications = list(
+                db["business_tax_applications"]
+                .find(query)
+                .sort("createdAt", -1)
+                .skip(skip)
+                .limit(limit)
+            )
         
         return [
             BusinessTaxPlanningApplicationResponse(
@@ -567,6 +602,7 @@ def get_all_applications(
                 numberOfEmployees=app.get("numberOfEmployees"),
                 servicesRequired=app.get("servicesRequired"),
                 businessDetails=app.get("businessDetails"),
+                userId=app.get("userId"),
                 status=ConsultationStatus(app["status"]),
                 createdAt=app["createdAt"],
                 assignedTo=app.get("assignedTo"),
@@ -706,6 +742,59 @@ def delete_application(
         )
     
     return {"message": "Business tax planning application deleted successfully"}
+
+
+# ===================== USER ENDPOINTS - GET OWN DATA =====================
+
+@router.get("/application/user/{email}", response_model=List[BusinessTaxPlanningApplicationResponse])
+def get_user_applications(
+    email: str,
+    current_user: dict = Depends(get_current_user_optional)
+):
+    """
+    Get all business tax planning applications for a specific user by email
+    
+    This endpoint allows users to retrieve THEIR OWN applications by email address.
+    No authentication required - anyone can query by email to get their submitted data.
+    
+    Path parameters:
+    - email: User's business email address
+    
+    Returns:
+    - List of all business tax planning applications submitted by this user
+    """
+    try:
+        email_lower = email.lower()
+        applications = business_tax_repository.get_applications_by_email(email_lower)
+        
+        return [
+            BusinessTaxPlanningApplicationResponse(
+                id=str(app["_id"]),
+                businessName=app["businessName"],
+                businessEmail=app["businessEmail"],
+                contactNumber=app["contactNumber"],
+                businessPAN=app["businessPAN"],
+                ownerName=app.get("ownerName", app.get("businessName", "N/A")),
+                businessStructure=app["businessStructure"],
+                industryType=app["industryType"],
+                turnoverRange=app["turnoverRange"],
+                gstNumber=app.get("gstNumber"),
+                numberOfEmployees=app.get("numberOfEmployees"),
+                servicesRequired=app.get("servicesRequired"),
+                businessDetails=app.get("businessDetails"),
+                status=ConsultationStatus(app["status"]),
+                createdAt=app["createdAt"],
+                assignedTo=app.get("assignedTo"),
+                adminNotes=app.get("adminNotes")
+            )
+            for app in applications
+        ]
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch user applications. Error: {str(e)}"
+        )
 
 
 # ===================== STATISTICS ENDPOINT =====================
